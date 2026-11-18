@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Club Royale Cruise Finder</title>
+<meta name="theme-color" content="#0b2545">
+<style>
+:root{
+  --bg:#f3f5f8; --card:#fff; --ink:#14202e; --muted:#5d6b7c; --line:#dde3ea;
+  --brand:#0b2545; --accent:#1366d6; --accent-ink:#fff; --chip:#eef2f7; --chip-on:#1366d6;
+  --good:#0f7b4b; --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1117; --card:#161b22; --ink:#e6edf3; --muted:#8b97a5; --line:#2a323c;
+  --brand:#0b1a2e; --accent:#4b93f0; --accent-ink:#0d1117; --chip:#1f2630; --chip-on:#4b93f0;
+  --good:#3fb47a; --shadow:none;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:var(--brand);color:#fff;padding:10px 16px calc(10px);padding-top:max(10px,env(safe-area-inset-top))}
+.hrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:1200px;margin:0 auto}
+h1{font-size:17px;margin:0;white-space:nowrap;font-weight:650}
+h1 small{display:block;font-size:12px;font-weight:400;opacity:.75}
+.search{order:3;flex:1 1 100%}
+#openFilters{margin-left:auto}
+@media (min-width:600px){.search{order:0;flex:1 1 0}}
+.search input{width:100%;border:0;border-radius:10px;padding:9px 12px;background:rgba(255,255,255,.14);color:#fff;font-size:16px}
+.search input::placeholder{color:rgba(255,255,255,.65)}
+#openFilters{border:0;border-radius:10px;background:#fff;color:var(--brand);padding:9px 12px;font-weight:600;white-space:nowrap}
+#openFilters .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--accent);color:#fff;font-size:12px;line-height:18px;text-align:center}
+#openFilters .badge:empty{display:none}
+.wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:16px;padding:12px 16px 40px}
+.bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.count{font-weight:600}
+.bar select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 8px}
+.active{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.active:empty{display:none}
+.pill{border:0;border-radius:999px;background:var(--chip);padding:5px 10px;font-size:13px;cursor:pointer}
+.pill::after{content:" ×";opacity:.6}
+.pill.clear{background:none;color:var(--accent);font-weight:600}
+.pill.clear::after{content:""}
+
+/* filter panel */
+#panel{display:none}
+#panel.open{display:flex;position:fixed;inset:0;z-index:40;background:var(--bg);flex-direction:column}
+.phead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--card)}
+.phead h2{margin:0;font-size:17px}
+.phead button{border:0;background:none;color:var(--accent);font-weight:600;padding:4px}
+.pbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 16px}
+.pfoot{padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+.pfoot button{width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);padding:13px;font-weight:650;font-size:16px}
+fieldset{border:0;border-bottom:1px solid var(--line);margin:0;padding:14px 0}
+legend{float:left;width:100%;font-weight:650;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+legend button{border:0;background:none;color:var(--accent);font-size:13px;padding:0;cursor:pointer}
+legend button[hidden]{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;clear:both}
+.chip{border:1px solid transparent;background:var(--chip);border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+.chip small{color:var(--muted);margin-left:3px}
+.chip[aria-pressed=true]{background:var(--chip-on);color:#fff}
+.chip[aria-pressed=true] small{color:rgba(255,255,255,.8)}
+.rgrp{clear:both;padding:6px 0 8px}
+.rgrp+.rgrp{border-top:1px dashed var(--line)}
+.rgrp .chip.reg{font-weight:650}
+.rgrp .sub{margin-top:6px;padding-left:14px}
+.rgrp .sub .chip{font-size:13px;padding:5px 10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;clear:both}
+.two label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.two input,.two select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px;font-size:16px;width:100%;min-height:40px}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0;clear:both}
+
+/* results */
+#list{display:grid;gap:10px}
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid var(--line);overflow:hidden}
+.ctop{padding:12px 14px 10px}
+.l1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ship{font-weight:650;font-size:16px}
+.cls{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:6px;font-weight:500;white-space:nowrap}
+.date{white-space:nowrap;font-weight:600;color:var(--accent)}
+.itin{margin-top:3px}
+.port{font-size:13px;color:var(--muted);margin-top:2px}
+.offers{border-top:1px solid var(--line)}
+.offer{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:8px 14px;align-items:baseline}
+.offer+.offer{border-top:1px dashed var(--line)}
+.pts{font-weight:700;font-variant-numeric:tabular-nums;min-width:62px}
+.pts small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.room{font-weight:500}
+.perks{font-size:13px;color:var(--muted)}
+.fp{color:var(--good);font-weight:600}
+.guests{font-size:12px;white-space:nowrap;color:var(--muted);text-align:right}
+.more{display:block;margin:16px auto;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 18px;font-weight:600;cursor:pointer}
+.empty{padding:40px 10px;text-align:center;color:var(--muted)}
+footer{font-size:12px;color:var(--muted);margin-top:24px;line-height:1.5}
+footer table{border-collapse:collapse;margin-top:6px}
+footer td{padding:1px 10px 1px 0}
+
+@media (min-width:900px){
+  #openFilters{display:none}
+  .wrap{grid-template-columns:300px 1fr;align-items:start}
+  #panel,#panel.open{display:flex;position:sticky;top:66px;inset:auto;max-height:calc(100vh - 80px);flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;z-index:1}
+  .phead{border-radius:14px 14px 0 0;padding-top:14px}
+  #closeFilters,.pfoot{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>Club Royale<small id="sub">Cruise Finder</small></h1>
+    <div class="search"><input id="q" type="search" placeholder="Search: Alaska, Perfect Day…" enterkeyhint="search" autocomplete="off"></div>
+    <button id="openFilters" type="button">Filters<span class="badge" id="badge"></span></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <aside id="panel" aria-label="Filters">
+    <div class="phead"><h2>Filters</h2><div><button type="button" id="resetAll">Reset</button> <button type="button" id="closeFilters">Done</button></div></div>
+    <div class="pbody" id="pbody"></div>
+    <div class="pfoot"><button type="button" id="showBtn">Show cruises</button></div>
+  </aside>
+
+  <main>
+    <div class="bar">
+      <span class="count" id="count">Loading…</span>
+      <label>Sort <select id="sort">
+        <option value="date">Sail date</option>
+        <option value="short">Shortest first</option>
+        <option value="long">Longest first</option>
+        <option value="pts">Fewest points</option>
+        <option value="fp">Most FreePlay</option>
+      </select></label>
+    </div>
+    <div class="active" id="active"></div>
+    <div id="list"></div>
+    <button class="more" id="more" hidden>Show more</button>
+    <footer id="foot"></footer>
+  </main>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const PAGE = 40;
+const CATS = ["Interior", "Ocean View", "Balcony", "Suite"];
+let D, shown = PAGE, results = [];
+const st = { tiers:new Set(), cls:new Set(), ships:new Set(), ports:new Set(), regions:new Set(), cats:new Set(), guests:new Set(),
+             from:"", to:"", nmin:"", nmax:"", q:"", sort:"date" };
+
+const region = p => p.split(", ").pop();
+const short = n => n.replace(/ Of The Seas$/, "");
+const fmt = n => n.toLocaleString("en-US");
+const kpts = p => p >= 1000 ? (p % 1000 ? (p/1000).toFixed(1) : p/1000) + "K" : String(p);
+const tierLabel = o => o.code.replace(/^\d{4}C/, "");
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const todayISO = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
+const dateLabel = iso => { const [y,m,d] = iso.split("-").map(Number);
+  return new Date(y, m-1, d).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric", year:"numeric"}); };
+
+fetch("cruises.json", {cache:"no-cache"}).then(r => { if (!r.ok) throw r.status; return r.json(); })
+  .then(init).catch(e => { $("#count").textContent = "Couldn't load cruises.json (" + e + ")"; });
+
+function init(data) {
+  D = data;
+  D.sailings.forEach(s => {
+    s.ship = D.ships[s.s]; s.port = D.ports[s.p];
+    s.hay = (s.ship.name + " " + s.ship.cls + " " + s.port + " " + s.i).toLowerCase();
+  });
+  D.roomCat = D.rooms.map(r => r.cat);
+  D.portRegion = D.ports.map(region);
+  const maxN = Math.max(...D.sailings.map(s => s.n));
+  D.nights = [...new Set(D.sailings.map(s => s.n))].sort((a,b) => a-b);
+  $("#sub").textContent = "Offer " + D.source.replace(".pdf","") + " · " + D.sailings.length.toLocaleString() + " sailings";
+  readURL();
+  buildPanel();
+  bind();
+  footer();
+  run();
+}
+
+/* ---------- panel ---------- */
+function count(fn) { const c = new Map(); D.sailings.forEach(s => fn(s).forEach(k => c.set(k, (c.get(k)||0)+1))); return c; }
+
+function chipGroup(id, title, items, set, hint) {
+  // items: [{v, label, n}]
+  return `<fieldset data-g="${id}"><legend>${title}<button type="button" data-clear="${id}" ${set.size?"":"hidden"}>Clear</button></legend>
+    <div class="chips">${items.map(it => `<button type="button" class="chip" data-g="${id}" data-v="${esc(String(it.v))}" aria-pressed="${set.has(it.v)}">${esc(it.label)}${it.n!=null?`<small>${fmt(it.n)}</small>`:""}</button>`).join("")}</div>
+    ${hint?`<p class="hint">${hint}</p>`:""}</fieldset>`;
+}
+
+function portGroup(ports, portN) {
+  // Group ports by state/country (last comma part); regions ordered by sailing count.
+  const regs = new Map();
+  ports.forEach(x => { const r = D.portRegion[x.i]; if (!regs.has(r)) regs.set(r, {r, ports:[], n:0}); const g = regs.get(r); g.ports.push(x); g.n += portN.get(x.i) || 0; });
+  const all = [...regs.values()].sort((a,b) => b.n - a.n);
+  const multi = all.filter(g => g.ports.length > 1), single = all.filter(g => g.ports.length === 1);
+  const chip = (g, v, label, n, cls="") => `<button type="button" class="chip ${cls}" data-g="${g}" data-v="${esc(String(v))}" aria-pressed="false">${esc(label)}<small>${fmt(n)}</small></button>`;
+  return `<fieldset><legend>Departure port<button type="button" data-clear="ports" hidden>Clear</button></legend>
+    ${multi.map(g => `<div class="rgrp"><div class="chips">${chip("regions", g.r, "All " + g.r, g.n, "reg")}</div>
+      <div class="chips sub">${g.ports.sort((a,b) => a.p.localeCompare(b.p)).map(x => chip("ports", x.i, x.p.split(", ")[0], portN.get(x.i))).join("")}</div></div>`).join("")}
+    <div class="rgrp"><div class="chips">${single.map(g => chip("regions", g.r, g.ports[0].p, g.n)).join("")}</div></div>
+    <p class="hint">Tap a state or country for any port there, or pick individual ports.</p></fieldset>`;
+}
+
+function buildPanel() {
+  const tierN = count(s => [...new Set(s.o.map(o => o[0]))]);
+  const clsN = count(s => [s.ship.cls]), shipN = count(s => [s.s]), portN = count(s => [s.p]);
+  const catN = count(s => [...new Set(s.o.map(o => D.roomCat[o[1]]))]);
+  const classes = ["Icon","Oasis","Quantum","Freedom","Voyager","Radiance","Vision"].filter(c => clsN.has(c));
+  const ships = D.ships.map((sh, i) => ({sh, i})).filter(x => !st.cls.size || st.cls.has(x.sh.cls))
+    .sort((a,b) => classes.indexOf(a.sh.cls) - classes.indexOf(b.sh.cls) || a.sh.name.localeCompare(b.sh.name));
+  const ports = D.ports.map((p, i) => ({p, i}));
+  const nOpts = (sel) => `<option value="">Any</option>` + D.nights.map(n => `<option ${String(n)===sel?"selected":""}>${n}</option>`).join("");
+
+  $("#pbody").innerHTML =
+    chipGroup("tiers", "Points tier", [...D.offers.keys()].reverse().map(i => ({v:i, label:kpts(D.offers[i].points)+" · "+tierLabel(D.offers[i]), n:tierN.get(i)||0})), st.tiers,
+      "Each tier is a separate offer code. Pick yours (or several to compare).") +
+    `<fieldset><legend>Sail dates</legend><div class="two">
+      <label>From<input type="date" id="from" value="${st.from}"></label>
+      <label>To<input type="date" id="to" value="${st.to}"></label></div></fieldset>` +
+    `<fieldset><legend>Nights</legend><div class="two">
+      <label>Min<select id="nmin">${nOpts(st.nmin)}</select></label>
+      <label>Max<select id="nmax">${nOpts(st.nmax)}</select></label></div></fieldset>` +
+    chipGroup("cls", "Ship class", classes.map(c => ({v:c, label:c, n:clsN.get(c)})), st.cls) +
+    chipGroup("ships", "Ship", ships.map(x => ({v:x.i, label:short(x.sh.name), n:shipN.get(x.i)})), st.ships,
+      st.cls.size ? "Showing ships in the selected class(es)." : "") +
+    portGroup(ports, portN) +
+    chipGroup("cats", "Stateroom", CATS.filter(c => catN.has(c)).map(c => ({v:c, label:c, n:catN.get(c)})), st.cats,
+      "GTY = guaranteed: Royal picks the room within that category.") +
+    chipGroup("guests", "Offer", [{v:2, label:"Free fare for 2"}, {v:1, label:"Free fare for 1"}], st.guests,
+      "“For 1”: guest 2 pays a reduced fare; taxes & fees apply to all.");
+  syncPanel();
+}
+
+function bind() {
+  $("#pbody").addEventListener("click", e => {
+    const c = e.target.closest(".chip"), clr = e.target.closest("[data-clear]");
+    if (c) {
+      const g = c.dataset.g, raw = c.dataset.v, v = ["tiers","ships","ports","guests"].includes(g) ? Number(raw) : raw;
+      if (g === "regions") {
+        // Selecting a whole region supersedes its individual ports.
+        D.ports.forEach((_, i) => { if (D.portRegion[i] === v) st.ports.delete(i); });
+        st.regions.has(v) ? st.regions.delete(v) : st.regions.add(v);
+      } else if (g === "ports" && st.regions.has(D.portRegion[v])) {
+        // Tapping one port of a selected region = "that region except this port".
+        const r = D.portRegion[v]; st.regions.delete(r);
+        D.ports.forEach((_, i) => { if (D.portRegion[i] === r && i !== v) st.ports.add(i); });
+      } else st[g].has(v) ? st[g].delete(v) : st[g].add(v);
+      if (g === "cls") pruneShips();
+      changed(g === "cls");
+    } else if (clr) { st[clr.dataset.clear].clear(); if (clr.dataset.clear === "ports") st.regions.clear(); if (clr.dataset.clear === "cls") pruneShips(); changed(true); }
+  });
+  $("#pbody").addEventListener("change", e => {
+    if (["from","to","nmin","nmax"].includes(e.target.id)) { st[e.target.id] = e.target.value; changed(); }
+  });
+  let t; $("#q").addEventListener("input", e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value.trim(); changed(); }, 150); });
+  $("#q").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+  $("#sort").addEventListener("change", e => { st.sort = e.target.value; changed(); });
+  $("#openFilters").onclick = () => { $("#panel").classList.add("open"); document.body.style.overflow = "hidden"; };
+  const close = () => { $("#panel").classList.remove("open"); document.body.style.overflow = ""; window.scrollTo(0,0); };
+  $("#closeFilters").onclick = close; $("#showBtn").onclick = close;
+  $("#resetAll").onclick = () => { reset(); changed(true); };
+  $("#more").onclick = () => { shown += PAGE; render(); };
+  $("#active").addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if (!b) return;
+    if (b.dataset.k === "all") reset();
+    else { const [g, v] = b.dataset.k.split(":"); if (st[g] instanceof Set) st[g].delete(["cls","cats","regions"].includes(g) ? v : Number(v)); else st[g] = ""; if (g==="q") $("#q").value=""; if (g==="cls") pruneShips(); }
+    changed(true);
+  });
+  if ("IntersectionObserver" in window) new IntersectionObserver(es => { if (es[0].isIntersecting && !$("#more").hidden) { shown += PAGE; render(); } }, {rootMargin:"600px"}).observe($("#more"));
+  window.addEventListener("popstate", () => { readURL(); buildPanel(); run(false); });
+}
+
+function pruneShips() { if (st.cls.size) [...st.ships].forEach(i => { if (!st.cls.has(D.ships[i].cls)) st.ships.delete(i); }); }
+function reset() { ["tiers","cls","ships","ports","regions","cats","guests"].forEach(k => st[k].clear()); st.from = todayISO(); st.to = st.nmin = st.nmax = st.q = ""; $("#q").value = ""; }
+
+function changed(rebuild) {
+  shown = PAGE;
+  if (rebuild) buildPanel(); else syncPanel();
+  run();
+}
+function syncPanel() {
+  document.querySelectorAll("#pbody .chip").forEach(c => {
+    const g = c.dataset.g, v = ["tiers","ships","ports","guests"].includes(g) ? Number(c.dataset.v) : c.dataset.v;
+    c.setAttribute("aria-pressed", st[g].has(v) || (g === "ports" && st.regions.has(D.portRegion[v])));
+  });
+  document.querySelectorAll("#pbody [data-clear]").forEach(b => b.hidden = !(st[b.dataset.clear].size || (b.dataset.clear === "ports" && st.regions.size)));
+}
+
+/* ---------- filtering ---------- */
+function run(push = true) {
+  const q = st.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const nmin = st.nmin ? +st.nmin : 0, nmax = st.nmax ? +st.nmax : 1e9;
+  results = [];
+  for (const s of D.sailings) {
+    if (st.from && s.d < st.from) continue;
+    if (st.to && s.d > st.to) continue;
+    if (s.n < nmin || s.n > nmax) continue;
+    if (st.cls.size && !st.cls.has(s.ship.cls)) continue;
+    if (st.ships.size && !st.ships.has(s.s)) continue;
+    if ((st.ports.size || st.regions.size) && !st.ports.has(s.p) && !st.regions.has(D.portRegion[s.p])) continue;
+    if (q.length && !q.every(w => s.hay.includes(w))) continue;
+    const offers = s.o.filter(o => (!st.tiers.size || st.tiers.has(o[0])) && (!st.cats.size || st.cats.has(D.roomCat[o[1]])) && (!st.guests.size || st.guests.has(o[2])));
+    if (offers.length) results.push({s, offers});
+  }
+  const minPts = r => Math.min(...r.offers.map(o => D.offers[o[0]].points));
+  const maxFp = r => Math.max(...r.offers.map(o => o[3]));
+  const byDate = (a,b) => a.s.d.localeCompare(b.s.d);
+  const sorts = { date: byDate, short: (a,b) => a.s.n-b.s.n || byDate(a,b), long: (a,b) => b.s.n-a.s.n || byDate(a,b),
+                  pts: (a,b) => minPts(a)-minPts(b) || byDate(a,b), fp: (a,b) => maxFp(b)-maxFp(a) || byDate(a,b) };
+  results.sort(sorts[st.sort] || byDate);
+  $("#sort").value = st.sort;
+  render();
+  activePills();
+  if (push) writeURL();
+}
+
+function render() {
+  const n = results.length, offN = results.reduce((a,r) => a + r.offers.length, 0);
+  $("#count").textContent = `${fmt(n)} sailing${n===1?"":"s"}` + (n ? ` · ${fmt(offN)} offer${offN===1?"":"s"}` : "");
+  $("#showBtn").textContent = n ? `Show ${fmt(n)} sailing${n===1?"":"s"}` : "No matches";
+  $("#list").innerHTML = n ? results.slice(0, shown).map(card).join("") : `<div class="empty">No sailings match those filters.</div>`;
+  $("#more").hidden = shown >= n;
+  $("#more").textContent = `Show more (${fmt(n - Math.min(shown, n))} left)`;
+}
+
+function card({s, offers}) {
+  return `<article class="card"><div class="ctop">
+    <div class="l1"><div><span class="ship">${esc(short(s.ship.name))}</span><span class="cls">${s.ship.cls} class</span></div><span class="date">${dateLabel(s.d)}</span></div>
+    <div class="itin">${esc(s.i)}</div>
+    <div class="port">${s.n} nights from ${esc(s.port)}</div></div>
+    <div class="offers">${offers.map(o => { const t = D.offers[o[0]], r = D.rooms[o[1]];
+      return `<div class="offer"><div class="pts">${fmt(t.points)}<small>${tierLabel(t)} pts</small></div>
+        <div><div class="room">${esc(r.name)}</div><div class="perks">${o[3] ? `<span class="fp">$${fmt(o[3])} FreePlay</span> · ` : ""}$${o[4]} OBC</div></div>
+        <div class="guests">Fare for ${o[2]}</div></div>`; }).join("")}</div></article>`;
+}
+
+function activePills() {
+  const p = [];
+  const add = (k, label) => p.push(`<button type="button" class="pill" data-k="${esc(k)}">${esc(label)}</button>`);
+  if (st.q) add("q:", `“${st.q}”`);
+  st.tiers.forEach(i => add("tiers:"+i, fmt(D.offers[i].points)+" pts"));
+  if (st.from) add("from:", "From " + st.from);
+  if (st.to) add("to:", "To " + st.to);
+  if (st.nmin) add("nmin:", "≥ " + st.nmin + " nights");
+  if (st.nmax) add("nmax:", "≤ " + st.nmax + " nights");
+  st.cls.forEach(c => add("cls:"+c, c + " class"));
+  st.ships.forEach(i => add("ships:"+i, short(D.ships[i].name)));
+  st.regions.forEach(r => add("regions:"+r, D.portRegion.filter(x => x === r).length > 1 ? r + " (any port)" : r));
+  st.ports.forEach(i => add("ports:"+i, D.ports[i].split(",")[0]));
+  st.cats.forEach(c => add("cats:"+c, c));
+  st.guests.forEach(g => add("guests:"+g, "Fare for " + g));
+  const nf = p.length - (st.q ? 1 : 0) - (st.from === todayISO() ? 1 : 0);
+  $("#badge").textContent = nf || "";
+  if (p.length > 1) p.push(`<button type="button" class="pill clear" data-k="all">Clear all</button>`);
+  $("#active").innerHTML = p.join("");
+}
+
+/* ---------- URL state (shareable links) ---------- */
+function writeURL() {
+  const u = new URLSearchParams();
+  const put = (k, v) => { if (v) u.set(k, v); };
+  put("tier", [...st.tiers].map(i => tierLabel(D.offers[i])).join(","));
+  if (st.from !== todayISO()) u.set("from", st.from || "any");
+  put("to", st.to); put("nmin", st.nmin); put("nmax", st.nmax);
+  put("class", [...st.cls].join(","));
+  put("ship", [...st.ships].map(i => short(D.ships[i].name)).join(","));
+  put("region", [...st.regions].join(","));
+  put("port", [...st.ports].map(i => D.ports[i]).join("|"));
+  put("room", [...st.cats].join(","));
+  put("guests", [...st.guests].join(","));
+  put("q", st.q);
+  if (st.sort !== "date") u.set("sort", st.sort);
+  const qs = u.toString().replace(/%2C/g, ",").replace(/%7C/g, "|");
+  history.replaceState(null, "", qs ? "?" + qs : location.pathname);
+}
+function readURL() {
+  const u = new URLSearchParams(location.search), list = (k, sep=",") => (u.get(k) || "").split(sep).filter(Boolean);
+  reset();
+  list("tier").forEach(t => { const i = D.offers.findIndex(o => tierLabel(o) === t); if (i >= 0) st.tiers.add(i); });
+  const f = u.get("from"); st.from = f === "any" ? "" : (f || todayISO());
+  st.to = u.get("to") || ""; st.nmin = u.get("nmin") || ""; st.nmax = u.get("nmax") || "";
+  list("class").forEach(c => st.cls.add(c));
+  list("ship").forEach(n => { const i = D.ships.findIndex(s => short(s.name) === n); if (i >= 0) st.ships.add(i); });
+  list("region").forEach(r => { if (D.portRegion.includes(r)) st.regions.add(r); });
+  list("port", "|").forEach(n => { const i = D.ports.indexOf(n); if (i >= 0) st.ports.add(i); });
+  list("room").forEach(c => st.cats.add(c));
+  list("guests").forEach(g => st.guests.add(Number(g)));
+  st.q = u.get("q") || ""; $("#q").value = st.q;
+  st.sort = u.get("sort") || "date";
+}
+
+function footer() {
+  $("#foot").innerHTML = `Source: Club Royale offer ${esc(D.source)}, extracted ${D.generated}. Taxes, fees and port expenses are extra and confirmed at booking; availability isn't guaranteed — confirm with Club Royale before planning around a sailing.
+    <table>${D.offers.map(o => `<tr><td>${o.code}</td><td>${fmt(o.points)} pts</td><td>${o.fees ? `taxes &amp; fees ${o.fees[0]}–${o.fees[1]}` : ""}</td></tr>`).join("")}</table>`;
+}
+})();
+</script>
+</body>
+</html>
