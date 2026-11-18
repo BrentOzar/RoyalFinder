@@ -81,6 +81,7 @@ legend button[hidden]{display:none}
 .date{white-space:nowrap;font-weight:600;color:var(--accent)}
 .itin{margin-top:3px}
 .port{font-size:13px;color:var(--muted);margin-top:2px}
+.ow{color:var(--ink);font-weight:600}
 .offers{border-top:1px solid var(--line)}
 .offer{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:8px 14px;align-items:baseline}
 .offer+.offer{border-top:1px dashed var(--line)}
@@ -145,7 +146,7 @@ const $ = s => document.querySelector(s);
 const PAGE = 40;
 const CATS = ["Interior", "Ocean View", "Balcony", "Suite"];
 let D, shown = PAGE, results = [];
-const st = { tiers:new Set(), cls:new Set(), ships:new Set(), ports:new Set(), regions:new Set(), cats:new Set(), guests:new Set(),
+const st = { tiers:new Set(), cls:new Set(), ships:new Set(), ports:new Set(), regions:new Set(), route:new Set(), cats:new Set(), guests:new Set(),
              from:"", to:"", nmin:"", nmax:"", q:"", sort:"date" };
 
 const region = p => p.split(", ").pop();
@@ -165,7 +166,8 @@ function init(data) {
   D = data;
   D.sailings.forEach(s => {
     s.ship = D.ships[s.s]; s.port = D.ports[s.p];
-    s.hay = (s.ship.name + " " + s.ship.cls + " " + s.port + " " + s.i).toLowerCase();
+    s.ow = "e" in s; s.end = s.e >= 0 ? D.ports[s.e] : "";
+    s.hay = (s.ship.name + " " + s.ship.cls + " " + s.port + " " + s.end + " " + s.i + (s.ow ? " one-way repositioning" : "")).toLowerCase();
   });
   D.roomCat = D.rooms.map(r => r.cat);
   D.portRegion = D.ports.map(region);
@@ -226,6 +228,8 @@ function buildPanel() {
     chipGroup("ships", "Ship", ships.map(x => ({v:x.i, label:short(x.sh.name), n:shipN.get(x.i)})), st.ships,
       st.cls.size ? "Showing ships in the selected class(es)." : "") +
     portGroup(ports, portN) +
+    chipGroup("route", "Route", [{v:"rt", label:"Round trip", n:D.sailings.filter(x => !x.ow).length}, {v:"ow", label:"One-way / repositioning", n:D.sailings.filter(x => x.ow).length}], st.route,
+      "One-way = ends at a different port than it starts. Inferred from the ship\u2019s next sailing and itinerary names, since the PDFs only list departure ports.") +
     chipGroup("cats", "Stateroom", CATS.filter(c => catN.has(c)).map(c => ({v:c, label:c, n:catN.get(c)})), st.cats,
       "GTY = guaranteed: Royal picks the room within that category.") +
     chipGroup("guests", "Offer", [{v:2, label:"Free fare for 2"}, {v:1, label:"Free fare for 1"}], st.guests,
@@ -265,7 +269,7 @@ function bind() {
   $("#active").addEventListener("click", e => {
     const b = e.target.closest(".pill"); if (!b) return;
     if (b.dataset.k === "all") reset();
-    else { const [g, v] = b.dataset.k.split(":"); if (st[g] instanceof Set) st[g].delete(["cls","cats","regions"].includes(g) ? v : Number(v)); else st[g] = ""; if (g==="q") $("#q").value=""; if (g==="cls") pruneShips(); }
+    else { const [g, v] = b.dataset.k.split(":"); if (st[g] instanceof Set) st[g].delete(["cls","cats","regions","route"].includes(g) ? v : Number(v)); else st[g] = ""; if (g==="q") $("#q").value=""; if (g==="cls") pruneShips(); }
     changed(true);
   });
   if ("IntersectionObserver" in window) new IntersectionObserver(es => { if (es[0].isIntersecting && !$("#more").hidden) { shown += PAGE; render(); } }, {rootMargin:"600px"}).observe($("#more"));
@@ -273,7 +277,7 @@ function bind() {
 }
 
 function pruneShips() { if (st.cls.size) [...st.ships].forEach(i => { if (!st.cls.has(D.ships[i].cls)) st.ships.delete(i); }); }
-function reset() { ["tiers","cls","ships","ports","regions","cats","guests"].forEach(k => st[k].clear()); st.from = todayISO(); st.to = st.nmin = st.nmax = st.q = ""; $("#q").value = ""; }
+function reset() { ["tiers","cls","ships","ports","regions","route","cats","guests"].forEach(k => st[k].clear()); st.from = todayISO(); st.to = st.nmin = st.nmax = st.q = ""; $("#q").value = ""; }
 
 function changed(rebuild) {
   shown = PAGE;
@@ -300,6 +304,7 @@ function run(push = true) {
     if (st.cls.size && !st.cls.has(s.ship.cls)) continue;
     if (st.ships.size && !st.ships.has(s.s)) continue;
     if ((st.ports.size || st.regions.size) && !st.ports.has(s.p) && !st.regions.has(D.portRegion[s.p])) continue;
+    if (st.route.size && !st.route.has(s.ow ? "ow" : "rt")) continue;
     if (q.length && !q.every(w => s.hay.includes(w))) continue;
     const offers = s.o.filter(o => (!st.tiers.size || st.tiers.has(o[0])) && (!st.cats.size || st.cats.has(D.roomCat[o[1]])) && (!st.guests.size || st.guests.has(o[2])));
     if (offers.length) results.push({s, offers});
@@ -329,7 +334,7 @@ function card({s, offers}) {
   return `<article class="card"><div class="ctop">
     <div class="l1"><div><span class="ship">${esc(short(s.ship.name))}</span><span class="cls">${s.ship.cls} class</span></div><span class="date">${dateLabel(s.d)}</span></div>
     <div class="itin">${esc(s.i)}</div>
-    <div class="port">${s.n} nights from ${esc(s.port)}</div></div>
+    <div class="port">${s.n} nights from ${esc(s.port)}${s.ow ? ` <span class="ow">→ ${s.end ? esc(s.end) : "one-way"}</span>` : ""}</div></div>
     <div class="offers">${offers.map(o => { const t = D.offers[o[0]], r = D.rooms[o[1]];
       return `<div class="offer"><div class="pts">${fmt(t.points)}<small>${tierLabel(t)} pts</small></div>
         <div><div class="room">${esc(r.name)}</div><div class="perks">${o[3] ? `<span class="fp">$${fmt(o[3])} FreePlay</span> · ` : ""}$${o[4]} OBC</div></div>
@@ -349,6 +354,7 @@ function activePills() {
   st.ships.forEach(i => add("ships:"+i, short(D.ships[i].name)));
   st.regions.forEach(r => add("regions:"+r, D.portRegion.filter(x => x === r).length > 1 ? r + " (any port)" : r));
   st.ports.forEach(i => add("ports:"+i, D.ports[i].split(",")[0]));
+  st.route.forEach(r => add("route:"+r, r === "ow" ? "One-way" : "Round trip"));
   st.cats.forEach(c => add("cats:"+c, c));
   st.guests.forEach(g => add("guests:"+g, "Fare for " + g));
   const nf = p.length - (st.q ? 1 : 0) - (st.from === todayISO() ? 1 : 0);
@@ -368,6 +374,7 @@ function writeURL() {
   put("ship", [...st.ships].map(i => short(D.ships[i].name)).join(","));
   put("region", [...st.regions].join(","));
   put("port", [...st.ports].map(i => D.ports[i]).join("|"));
+  put("route", [...st.route].map(r => r === "ow" ? "oneway" : "roundtrip").join(","));
   put("room", [...st.cats].join(","));
   put("guests", [...st.guests].join(","));
   put("q", st.q);
@@ -385,6 +392,7 @@ function readURL() {
   list("ship").forEach(n => { const i = D.ships.findIndex(s => short(s.name) === n); if (i >= 0) st.ships.add(i); });
   list("region").forEach(r => { if (D.portRegion.includes(r)) st.regions.add(r); });
   list("port", "|").forEach(n => { const i = D.ports.indexOf(n); if (i >= 0) st.ports.add(i); });
+  list("route").forEach(r => st.route.add(r === "oneway" ? "ow" : "rt"));
   list("room").forEach(c => st.cats.add(c));
   list("guests").forEach(g => st.guests.add(Number(g)));
   st.q = u.get("q") || ""; $("#q").value = st.q;

@@ -41,6 +41,33 @@ def clean_itin(s):
     return s
 
 
+ONE_WAY_WORDS = re.compile(r"Transatlantic|Transpacific|Reposition|Northbound|Southbound|Pacific Coastal|\bTo\b")
+
+
+def mark_one_way(sailings):
+    """Flag sailings that end somewhere other than where they start.
+
+    The PDFs only give a departure port, so: if the same ship's next listed
+    sailing departs from a different port the day this one ends (or a day
+    early, for date-line crossings), this sailing ends there. Otherwise fall
+    back to itinerary keywords (Transatlantic, "Miami To Cape Liberty", ...),
+    where the end port is unknown. Sets s["e"] = end port index, or -1 if
+    one-way with unknown end. Absent = round trip (or no evidence otherwise).
+    """
+    by_ship = {}
+    for s in sailings.values():
+        by_ship.setdefault(s["s"], []).append(s)
+    for lst in by_ship.values():
+        lst.sort(key=lambda s: s["d"])
+        for a, b in zip(lst, lst[1:]):
+            gap = (datetime.date.fromisoformat(b["d"]) - datetime.date.fromisoformat(a["d"])).days - a["n"]
+            if gap in (-1, 0) and b["p"] != a["p"]:
+                a["e"] = b["p"]
+    for s in sailings.values():
+        if "e" not in s and ONE_WAY_WORDS.search(s["i"]):
+            s["e"] = -1
+
+
 def main():
     index = [p for p in glob.glob(os.path.join(SRC, "*.pdf"))
              if re.fullmatch(r"\d{4}C", os.path.basename(p)[:-4])]
@@ -98,6 +125,8 @@ def main():
     if missing:
         sys.exit(f"Unknown ship class for: {missing} - add to SHIP_CLASS")
 
+    mark_one_way(sailings)
+
     out = {
         "generated": datetime.date.today().isoformat(),
         "source": os.path.basename(index[0]),
@@ -111,6 +140,8 @@ def main():
         s["o"].sort(key=lambda o: -offers[o[0]]["points"])
     with open(OUT, "w") as fh:
         json.dump(out, fh, separators=(",", ":"))
+    ow = [s for s in out["sailings"] if "e" in s]
+    print(f"{len(ow)} one-way ({sum(1 for s in ow if s['e'] < 0)} with unknown end port)", file=sys.stderr)
     print(f"{len(out['sailings'])} sailings, {sum(len(s['o']) for s in out['sailings'])} offers -> {OUT}",
           file=sys.stderr)
 
