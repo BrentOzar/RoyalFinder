@@ -132,6 +132,21 @@ footer td{padding:1px 12px 1px 0}
   #closeFilters,.pfoot{display:none}
 }
 
+/* "which cruise are you on" banner */
+.setbar{max-width:1200px;margin:0 auto 4px;padding:4px 16px 0}
+.setbox{background:var(--card);border:2px solid var(--gold);border-radius:20px;padding:14px 16px;box-shadow:var(--shadow)}
+.setbox h2{font:700 19px/1.2 var(--serif);margin:0 0 2px}
+.setbox .why{font-size:13.5px;color:var(--muted);margin:0 0 10px}
+.setrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:8px}
+.setrow > span{font-weight:800;font-size:14px;min-width:84px}
+.setrow .chip[disabled]{opacity:.45;cursor:not-allowed}
+.setnow{margin:10px 0 0;font-size:14px}
+.setnow b{color:var(--link)}
+@media (max-width:599px){.setrow > span{flex-basis:100%}}
+body.noset .wrap{display:none}
+body.noset .setbox{border-width:3px}
+@media (min-width:900px){.setbox{display:flex;flex-wrap:wrap;align-items:center;gap:6px 28px}.setbox .intro{flex:1 1 100%}.setrow{margin-top:0}.setnow{flex:1 1 100%;margin-top:4px}}
+
 /* tier analysis */
 .linkbtn{border:0;background:none;padding:0;font:inherit;color:#fff;text-decoration:underline;text-underline-offset:3px}
 .modal{position:fixed;inset:0;z-index:60;background:rgba(4,12,24,.55);display:flex;align-items:stretch;justify-content:center}
@@ -175,6 +190,8 @@ footer td{padding:1px 12px 1px 0}
   <svg class="waves" viewBox="0 0 1200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20V10C50 10 50 1 100 1S150 10 200 10 250 1 300 1 350 10 400 10 450 1 500 1 550 10 600 10 650 1 700 1 750 10 800 10 850 1 900 1 950 10 1000 10 1050 1 1100 1 1150 10 1200 10V20Z" fill="currentColor"/></svg>
 </header>
 
+<section class="setbar" aria-label="Your cruise"><div class="setbox" id="setbox"></div></section>
+
 <div class="wrap">
   <aside id="panel" aria-label="Filters">
     <div class="phead"><h2>Filters</h2><div><button type="button" id="resetAll">Reset</button> <button type="button" id="closeFilters">Done</button></div></div>
@@ -212,7 +229,8 @@ footer td{padding:1px 12px 1px 0}
 const $ = s => document.querySelector(s);
 const PAGE = 40;
 const CATS = ["Interior", "Ocean View", "Balcony", "Suite"];
-let D, shown = PAGE, results = [];
+let ALL, D, shown = PAGE, results = [];
+let pick = { month:"", nights:"" };   // banner selections in progress
 const st = { tiers:new Set(), cls:new Set(), ships:new Set(), ports:new Set(), regions:new Set(), route:new Set(), cats:new Set(), guests:new Set(),
              from:"", to:"", nmin:"", nmax:"", q:"", sort:"date" };
 
@@ -220,7 +238,11 @@ const region = p => p.split(", ").pop();
 const short = n => n.replace(/ Of The Seas$/, "");
 const fmt = n => n.toLocaleString("en-US");
 const kpts = p => p >= 1000 ? (p % 1000 ? (p/1000).toFixed(1) : p/1000) + "K" : String(p);
-const tierLabel = o => o.code.replace(/^\d{4}C/, "");
+const tierLabel = o => o.tier;
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const monthName = ym => MONTHS[+ym.slice(5) - 1] + " " + ym.slice(0, 4);
+const nightsName = n => n === "1-5" ? "1–5 nights" : n === "6+" ? "6+ nights" : "any length";
+const setDesc = x => `${monthName(x.month)} sailings, ${x.nights ? nightsName(x.nights) : "any cruise length"}`;
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const todayISO = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
 const dateLabel = iso => { const [y,m,d] = iso.split("-").map(Number);
@@ -230,21 +252,15 @@ fetch("cruises.json", {cache:"no-cache"}).then(r => { if (!r.ok) throw r.status;
   .then(init).catch(e => { $("#count").textContent = "Couldn't load cruises.json (" + e + ")"; });
 
 function init(data) {
-  D = data;
-  D.sailings.forEach(s => {
-    s.ship = D.ships[s.s]; s.port = D.ports[s.p];
-    s.ow = "e" in s; s.end = s.e >= 0 ? D.ports[s.e] : "";
+  ALL = data;
+  ALL.roomCat = ALL.rooms.map(r => r.cat);
+  ALL.portRegion = ALL.ports.map(region);
+  ALL.sets.forEach(set => set.sailings.forEach(s => {
+    s.ship = ALL.ships[s.s]; s.port = ALL.ports[s.p];
+    s.ow = "e" in s; s.end = s.e >= 0 ? ALL.ports[s.e] : "";
     s.hay = (s.ship.name + " " + s.ship.cls + " " + s.port + " " + s.end + " " + s.i + (s.ow ? " one-way repositioning" : "")).toLowerCase();
-  });
-  D.roomCat = D.rooms.map(r => r.cat);
-  D.portRegion = D.ports.map(region);
-  const maxN = Math.max(...D.sailings.map(s => s.n));
-  D.nights = [...new Set(D.sailings.map(s => s.n))].sort((a,b) => a-b);
-  $("#sub").textContent = "Offer " + D.source.replace(".pdf","") + " · " + D.sailings.length.toLocaleString() + " sailings";
-  readURL();
-  buildPanel();
+  }));
   bind();
-  footer();
   $("#openAnalysis").onclick = openAnalysis;
   $("#closeAnalysis").onclick = closeAnalysis;
   $("#analysis").addEventListener("click", e => {
@@ -254,7 +270,66 @@ function init(data) {
     st.tiers.add(Number(tr.dataset.tier)); closeAnalysis(); changed(true); window.scrollTo(0, 0);
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#analysis").hidden) closeAnalysis(); });
-  run();
+  $("#setbox").addEventListener("click", onSetClick);
+  const code = initialSet();
+  if (code) activate(code, true);
+  else { document.body.classList.add("noset"); buildBanner(); }
+}
+
+/* ---------- offer sets: the certificate depends on the cruise you're on (month + length) ---------- */
+const findSet = code => ALL.sets.find(x => x.code === code);
+const setsFor = (month, nights) => ALL.sets.filter(x => (!month || x.month === month) && (!nights || !x.nights || x.nights === nights));
+function initialSet() {
+  const u = new URLSearchParams(location.search).get("set");
+  if (findSet(u)) return u;
+  let saved = null; try { saved = localStorage.getItem("rf.set"); } catch (e) {}
+  if (findSet(saved)) return saved;
+  return ALL.sets.length === 1 ? ALL.sets[0].code : null;
+}
+function useSet(code) {
+  const set = findSet(code);
+  D = Object.assign({}, set, { generated:ALL.generated, ships:ALL.ships, ports:ALL.ports, rooms:ALL.rooms, roomCat:ALL.roomCat, portRegion:ALL.portRegion });
+  D.nightList = [...new Set(D.sailings.map(s => s.n))].sort((a,b) => a-b);
+  pick = { month:set.month, nights:set.nights || pick.nights };
+  $("#sub").textContent = "Offer " + set.code + " · " + D.sailings.length.toLocaleString() + " sailings";
+  anBuilt = false;
+  try { localStorage.setItem("rf.set", code); } catch (e) {}
+}
+function activate(code, fromURL) {
+  const wasActive = !!D, keepTiers = D ? [...st.tiers].map(i => D.offers[i].tier) : [];
+  useSet(code);
+  if (fromURL) readURL();
+  else if (!wasActive) reset();
+  else st.tiers = new Set(keepTiers.map(t => D.offers.findIndex(o => o.tier === t)).filter(i => i >= 0));
+  document.body.classList.remove("noset");
+  buildBanner(); footer(); shown = PAGE; buildPanel(); run();
+}
+function buildBanner() {
+  const months = [...new Set(ALL.sets.map(x => x.month))].sort();
+  const anyNights = ALL.sets.some(x => x.nights);
+  const chip = (g, v, label, on, dis) => `<button type="button" class="chip" data-set-g="${g}" data-v="${v}" aria-pressed="${on}" ${dis ? "disabled" : ""}>${label}</button>`;
+  const cur = D && !document.body.classList.contains("noset") ? D : null;
+  let status;
+  if (cur) status = `Showing offer <b>${esc(cur.code)}</b>: the certificates you can earn on ${esc(setDesc(cur))}.`;
+  else if (pick.month && !setsFor(pick.month, pick.nights).length) status = `No offer loaded yet for ${esc(monthName(pick.month))}${pick.nights ? ", " + nightsName(pick.nights) : ""}.`;
+  else status = `Pick ${pick.month ? "your cruise length" : "the month you’re sailing"} to see your offers.`;
+  $("#setbox").innerHTML = `<div class="intro"><h2>Which cruise are you on?</h2>
+    <p class="why">Club Royale certificates depend on the cruise you earn them on: the month you sail and how many nights it is.</p></div>
+    <div class="setrow"><span>Sailing in</span>${months.map(m => chip("month", m, monthName(m), pick.month === m)).join("")}</div>
+    ${anyNights ? `<div class="setrow"><span>Cruise length</span>${["1-5","6+"].map(n => chip("nights", n, nightsName(n), pick.nights === n, pick.month && !setsFor(pick.month, n).length)).join("")}</div>` : ""}
+    <p class="setnow">${status}</p>`;
+}
+function onSetClick(e) {
+  const c = e.target.closest("[data-set-g]"); if (!c || c.disabled) return;
+  pick[c.dataset.setG] = c.dataset.v;
+  if (c.dataset.setG === "month" && pick.nights && !setsFor(pick.month, pick.nights).length) pick.nights = "";
+  const matches = setsFor(pick.month, pick.nights);
+  // A single match (or every match ignores length) means we know which offer applies.
+  const lengthKnown = pick.nights || !ALL.sets.some(x => x.nights) || matches.every(x => !x.nights);
+  if (pick.month && matches.length === 1 && lengthKnown) {
+    if (!D || D.code !== matches[0].code || document.body.classList.contains("noset")) activate(matches[0].code, false);
+    else buildBanner();
+  } else { document.body.classList.add("noset"); buildBanner(); }
 }
 
 /* ---------- panel ---------- */
@@ -289,7 +364,7 @@ function buildPanel() {
   const ships = D.ships.map((sh, i) => ({sh, i})).filter(x => !st.cls.size || st.cls.has(x.sh.cls))
     .sort((a,b) => classes.indexOf(a.sh.cls) - classes.indexOf(b.sh.cls) || a.sh.name.localeCompare(b.sh.name));
   const ports = D.ports.map((p, i) => ({p, i}));
-  const nOpts = (sel) => `<option value="">Any</option>` + D.nights.map(n => `<option ${String(n)===sel?"selected":""}>${n}</option>`).join("");
+  const nOpts = (sel) => `<option value="">Any</option>` + D.nightList.map(n => `<option ${String(n)===sel?"selected":""}>${n}</option>`).join("");
 
   $("#pbody").innerHTML =
     chipGroup("tiers", "Points tier", [...D.offers.keys()].reverse().map(i => ({v:i, label:kpts(D.offers[i].points)+" · "+tierLabel(D.offers[i]), n:tierN.get(i)||0})), st.tiers,
@@ -349,7 +424,7 @@ function bind() {
     changed(true);
   });
   if ("IntersectionObserver" in window) new IntersectionObserver(es => { if (es[0].isIntersecting && !$("#more").hidden) { shown += PAGE; render(); } }, {rootMargin:"600px"}).observe($("#more"));
-  window.addEventListener("popstate", () => { readURL(); buildPanel(); run(false); });
+  window.addEventListener("popstate", () => { const c = new URLSearchParams(location.search).get("set"); if (findSet(c) && (!D || c !== D.code)) useSet(c); if (D) { readURL(); buildBanner(); buildPanel(); run(false); } });
 }
 
 function pruneShips() { if (st.cls.size) [...st.ships].forEach(i => { if (!st.cls.has(D.ships[i].cls)) st.ships.delete(i); }); }
@@ -443,6 +518,7 @@ function activePills() {
 function writeURL() {
   const u = new URLSearchParams();
   const put = (k, v) => { if (v) u.set(k, v); };
+  u.set("set", D.code);
   put("tier", [...st.tiers].map(i => tierLabel(D.offers[i])).join(","));
   if (st.from !== todayISO()) u.set("from", st.from || "any");
   put("to", st.to); put("nmin", st.nmin); put("nmax", st.nmax);
@@ -505,7 +581,7 @@ function analysisHTML() {
   const clsLine = c => { const by = T.map(t => ({t, n:[...t.ids].filter(si => S[si].ship.cls === c).length})).filter(x => x.n).sort((a,b) => b.n - a.n);
     return by.length ? `<li><b>${c}:</b> ${by.slice(0, 3).map(x => `${kpts(x.t.o.points)} (${x.n})`).join(" · ")}</li>` : ""; };
 
-  let h = `<p class="lead">This page turns Club Royale offer <b>${esc(D.source.replace(".pdf",""))}</b> into something searchable. Club Royale is Royal Caribbean’s casino loyalty program: the more you play, the more points you earn, and each month’s offer is split into <b>${T.length} tiers</b>, from ${fmt(lo.o.points)} to ${fmt(hi.o.points)} points. Each tier is its own offer code with its own list of sailings.</p>
+  let h = `<p class="lead">This page turns Club Royale offer <b>${esc(D.code)}</b> into something searchable. Club Royale is Royal Caribbean’s casino loyalty program: the more you play onboard, the more points you earn, and the certificate you’re offered depends on the cruise you earned it on. Offer ${esc(D.code)} covers ${esc(setDesc(D))}. It’s split into <b>${T.length} tiers</b>, from ${fmt(lo.o.points)} to ${fmt(hi.o.points)} points. Each tier is its own offer code with its own list of sailings.</p>
   <p>For every sailing, the tier sets the stateroom you get, whether the cruise fare is covered for <b>2 guests</b> (you pay just taxes &amp; fees) or <b>1 guest</b> (guest 2 pays a reduced fare), plus any casino FreePlay and onboard credit (OBC) on your next cruise.</p>
   <p>You’d expect higher tiers to unlock more sailings. Mostly they do — but not always. The table shows where the count drops.</p>
 
