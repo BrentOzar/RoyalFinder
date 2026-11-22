@@ -5,11 +5,13 @@ Usage: python3 build.py [sources_dir]
 Needs `pdftotext` (poppler).
 
 The certificate you're offered depends on the cruise you're on (month and
-length), so sources/ can hold several offer sets. Each set is an index PDF
-named like 2611C.pdf (YYMM + letters) plus the tier PDFs it lists
-(2611C01.pdf, 2611CVIP1.pdf, ...). The month comes from the code; the cruise
-length each set applies to comes from sources/sets.json, e.g.
-  {"2611C": {"nights": "6+"}, "2611A": {"nights": "1-5"}}
+length), so sources/ can hold several offer sets. A set is the tier PDFs named
+<set><tier>.pdf, e.g. 2611C01.pdf ... 2611C10.pdf, 2611CVIP1.pdf, where the set
+code is YYMM + one letter. The optional index PDF (2611C.pdf) supplies points
+per tier; without it, points come from TIER_POINTS. The month comes from the
+code; the cruise length comes from sources/sets.json, e.g.
+  {"2611A": {"nights": "1-5"}, "2611C": {"nights": "6+"}}
+(Royal's letters so far: A = current cruise under 6 nights, C = 6+ nights.)
 A set missing from sets.json gets nights = null (shown as "any length").
 """
 import glob, json, os, re, subprocess, sys, datetime
@@ -76,15 +78,25 @@ def mark_one_way(sailings):
 
 
 NIGHTS = {None, "1-5", "6+"}
+TIER_FILE = re.compile(r"(\d{4}[A-Z])(\d\d[A-Z]?|VIP\d+)")
+# Points per tier suffix, as published in the Nov/Dec 2026 offer tables and 2611C.pdf.
+TIER_POINTS = {"VIP1": 70000, "VIP2": 40000, "01": 25000, "02": 15000, "02A": 9000, "03": 6500,
+               "03A": 4000, "04": 3000, "05": 2000, "06": 1500, "07": 1200, "08": 800,
+               "09": 600, "10": 400}
 
 
 def main():
-    set_codes = sorted(os.path.basename(p)[:-4] for p in glob.glob(os.path.join(SRC, "*.pdf"))
-                       if re.fullmatch(r"\d{4}[A-Z]+", os.path.basename(p)[:-4]))
+    tier_files = {}
+    for p in glob.glob(os.path.join(SRC, "*.pdf")):
+        m = TIER_FILE.fullmatch(os.path.basename(p)[:-4])
+        if m: tier_files.setdefault(m.group(1), []).append(m.group(2))
+    set_codes = sorted(tier_files)
     if not set_codes:
-        sys.exit(f"No index PDFs like 2611C.pdf in {SRC}")
+        sys.exit(f"No tier PDFs like 2611C01.pdf in {SRC}")
     cfg_path = os.path.join(SRC, "sets.json")
     cfg = json.load(open(cfg_path)) if os.path.exists(cfg_path) else {}
+    for sc in sorted(set(cfg) - set(set_codes)):
+        print(f"NOTE: {sc} is in sets.json but has no PDFs in {SRC}; skipped", file=sys.stderr)
 
     ships, ports, rooms = [], [], []
     def ix(lst, v):
@@ -99,7 +111,7 @@ def main():
         if nights is None:
             print(f"WARNING: {sc} has no nights in sets.json; shown as any cruise length", file=sys.stderr)
         print(f"== {sc}", file=sys.stderr)
-        offers, sailings = build_set(sc, ships, ports, rooms, ix)
+        offers, sailings = build_set(sc, tier_files[sc], ships, ports, rooms, ix)
         sets.append({"code": sc, "source": sc + ".pdf", "month": f"20{sc[:2]}-{sc[2:4]}", "nights": nights,
                      "offers": offers,
                      "sailings": sorted(sailings.values(), key=lambda s: (s["d"], ships[s["s"]]))})
@@ -120,13 +132,23 @@ def main():
     print(f"{len(sets)} offer set(s) -> {OUT}", file=sys.stderr)
 
 
-def build_set(sc, ships, ports, rooms, ix):
-    idx = text(os.path.join(SRC, sc + ".pdf"))
-    codes = re.findall(rf"\b({re.escape(sc)}\w+)\b", idx)
-    pts = [int(p.replace(",", "")) for p in re.findall(r"([\d,]+) Points", idx)]
-    if not codes or len(codes) != len(pts):
-        sys.exit(f"{sc}.pdf: {len(codes)} codes vs {len(pts)} point values")
-    points = dict(zip(codes, pts))
+def build_set(sc, tiers, ships, ports, rooms, ix):
+    index = os.path.join(SRC, sc + ".pdf")
+    if os.path.exists(index):
+        idx = text(index)
+        codes = re.findall(rf"\b({re.escape(sc)}\w+)\b", idx)
+        pts = [int(p.replace(",", "")) for p in re.findall(r"([\d,]+) Points", idx)]
+        if not codes or len(codes) != len(pts):
+            sys.exit(f"{sc}.pdf: {len(codes)} codes vs {len(pts)} point values")
+        points = dict(zip(codes, pts))
+        extra = sorted(set(sc + t for t in tiers) - set(points))
+        if extra:
+            sys.exit(f"{sc}.pdf doesn't list {extra}")
+    else:
+        unknown = [t for t in tiers if t not in TIER_POINTS]
+        if unknown:
+            sys.exit(f"No {sc}.pdf and no default points for tiers {unknown}; add them to TIER_POINTS")
+        points = {sc + t: TIER_POINTS[t] for t in tiers}
 
     sailings = {}
     offers = []
