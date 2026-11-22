@@ -131,13 +131,44 @@ footer td{padding:1px 12px 1px 0}
   .phead{border-radius:20px 20px 0 0;padding-top:14px}
   #closeFilters,.pfoot{display:none}
 }
+
+/* tier analysis */
+.linkbtn{border:0;background:none;padding:0;font:inherit;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(4,12,24,.55);display:flex;align-items:stretch;justify-content:center}
+.modal[hidden]{display:none}
+.mbox{background:var(--bg);width:100%;display:flex;flex-direction:column;max-height:100%}
+.mbody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 18px 28px;padding-bottom:max(28px,env(safe-area-inset-bottom))}
+.mbody h3{font:700 19px var(--serif);margin:22px 0 8px}
+.mbody p{margin:8px 0}
+.mbody .lead{font-size:16.5px}
+.tt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+.tt th{text-align:left;font-size:12px;color:var(--muted);font-weight:800;padding:6px 6px;border-bottom:2px solid var(--line)}
+.tt td{padding:9px 6px;border-bottom:1px dashed var(--line);vertical-align:top}
+.tt tbody tr{cursor:pointer}
+.tt tbody tr:hover td{background:var(--chip)}
+.tt .pt{font-weight:800;white-space:nowrap}
+.tt .pt small{display:block;color:var(--muted);font-weight:700;font-size:11.5px}
+.tt .num{font-weight:800;font-variant-numeric:tabular-nums}
+.tt .num.dip{color:var(--link)}
+.bar8{height:8px;border-radius:4px;background:var(--sea);margin-top:5px;min-width:4px}
+.tt .rm{font-weight:700}
+.tt .sub2{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+.dip-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:10px 0}
+.dip-card b.h{font:700 17px var(--serif);display:block;margin-bottom:4px}
+.dip-card ul{margin:6px 0 0;padding-left:20px}
+.dip-card li{margin:3px 0}
+.note{font-size:13px;color:var(--muted)}
+@media (min-width:700px){
+  .modal{align-items:center;padding:24px}
+  .mbox{max-width:780px;max-height:92vh;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+}
 </style>
 </head>
 <body>
 <header>
   <div class="hrow">
     <svg class="logo" width="42" height="42" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#f2b632"/><circle cx="22" cy="22" r="16" fill="none" stroke="#0c2d57" stroke-width="2" stroke-dasharray="5 4"/><path d="M22 11v17M15 22a7 7 0 0 0 14 0M18 14h8" stroke="#0c2d57" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
-    <h1>Club Royale Cruise Finder<small id="sub">Free cruise offers</small></h1>
+    <h1>Club Royale Cruise Finder<small><span id="sub">Free cruise offers</span> · <button type="button" class="linkbtn" id="openAnalysis">Tier analysis</button></small></h1>
     <div class="search"><input id="q" type="search" placeholder="Search: Alaska, Perfect Day…" enterkeyhint="search" autocomplete="off"></div>
     <button id="openFilters" type="button">Filters<span class="badge" id="badge"></span></button>
   </div>
@@ -167,6 +198,13 @@ footer td{padding:1px 12px 1px 0}
     <button class="more" id="more" hidden>Show more</button>
     <footer id="foot"></footer>
   </main>
+</div>
+
+<div class="modal" id="analysis" hidden role="dialog" aria-modal="true" aria-labelledby="anTitle">
+  <div class="mbox">
+    <div class="phead"><h2 id="anTitle">Tier analysis</h2><button type="button" id="closeAnalysis">Close</button></div>
+    <div class="mbody" id="anBody"></div>
+  </div>
 </div>
 
 <script>
@@ -207,6 +245,15 @@ function init(data) {
   buildPanel();
   bind();
   footer();
+  $("#openAnalysis").onclick = openAnalysis;
+  $("#closeAnalysis").onclick = closeAnalysis;
+  $("#analysis").addEventListener("click", e => {
+    if (e.target.id === "analysis") return closeAnalysis();
+    const tr = e.target.closest("tr[data-tier]"); if (!tr) return;
+    ["tiers","cls","ships","ports","regions","route","cats","guests"].forEach(k => st[k].clear());
+    st.tiers.add(Number(tr.dataset.tier)); closeAnalysis(); changed(true); window.scrollTo(0, 0);
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#analysis").hidden) closeAnalysis(); });
   run();
 }
 
@@ -426,6 +473,104 @@ function readURL() {
   list("guests").forEach(g => st.guests.add(Number(g)));
   st.q = u.get("q") || ""; $("#q").value = st.q;
   st.sort = u.get("sort") || "date";
+}
+
+/* ---------- tier analysis (computed from the data, so it stays right month to month) ---------- */
+let anBuilt = false;
+function openAnalysis() {
+  if (!anBuilt) { $("#anBody").innerHTML = analysisHTML(); anBuilt = true; }
+  $("#analysis").hidden = false; document.body.style.overflow = "hidden"; $("#closeAnalysis").focus();
+}
+function closeAnalysis() { $("#analysis").hidden = true; document.body.style.overflow = ""; $("#openAnalysis").focus(); }
+
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monLabel = ym => MON[+ym.slice(5) - 1] + " " + ym.slice(0, 4);
+const pct = (a, b) => b ? Math.round(100 * a / b) : 0;
+const topRooms = (cnt, k = 2) => { const e = [...cnt].sort((a,b) => b[1]-a[1]); return e.slice(0, k).map(x => x[0]).join(", ") + (e.length > k ? ` +${e.length - k} more` : ""); };
+
+function analysisHTML() {
+  const S = D.sailings, order = D.offers.map((o, i) => i).sort((a,b) => D.offers[a].points - D.offers[b].points);
+  const T = order.map(i => {
+    const ids = new Set(), rooms = new Map(); let f2 = 0, fpMin = Infinity, fpMax = 0;
+    S.forEach((s, si) => s.o.forEach(o => { if (o[0] !== i) return;
+      ids.add(si); const r = D.rooms[o[1]].name; rooms.set(r, (rooms.get(r)||0) + 1);
+      if (o[2] === 2) f2++; fpMin = Math.min(fpMin, o[3]); fpMax = Math.max(fpMax, o[3]); }));
+    return { i, o: D.offers[i], ids, rooms, f2, fpMin, fpMax, roomOf: si => D.rooms[S[si].o.find(o => o[0] === i)[1]].name };
+  });
+  const max = Math.max(...T.map(t => t.ids.size));
+  const lo = T[0], hi = T[T.length - 1];
+
+  // Ship class: where each one is most available
+  const classes = [...new Set(D.ships.map(s => s.cls))];
+  const clsLine = c => { const by = T.map(t => ({t, n:[...t.ids].filter(si => S[si].ship.cls === c).length})).filter(x => x.n).sort((a,b) => b.n - a.n);
+    return by.length ? `<li><b>${c}:</b> ${by.slice(0, 3).map(x => `${kpts(x.t.o.points)} (${x.n})`).join(" · ")}</li>` : ""; };
+
+  let h = `<p class="lead">This page turns Club Royale offer <b>${esc(D.source.replace(".pdf",""))}</b> into something searchable. Club Royale is Royal Caribbean’s casino loyalty program: the more you play, the more points you earn, and each month’s offer is split into <b>${T.length} tiers</b>, from ${fmt(lo.o.points)} to ${fmt(hi.o.points)} points. Each tier is its own offer code with its own list of sailings.</p>
+  <p>For every sailing, the tier sets the stateroom you get, whether the cruise fare is covered for <b>2 guests</b> (you pay just taxes &amp; fees) or <b>1 guest</b> (guest 2 pays a reduced fare), plus any casino FreePlay and onboard credit (OBC) on your next cruise.</p>
+  <p>You’d expect higher tiers to unlock more sailings. Mostly they do — but not always. The table shows where the count drops.</p>
+
+  <h3>The tiers at a glance</h3>
+  <table class="tt"><thead><tr><th>Tier</th><th>Sailings</th><th>Room offered</th></tr></thead><tbody>
+  ${T.map((t, k) => { const prev = T[k-1], dip = prev && t.ids.size < prev.ids.size;
+    return `<tr data-tier="${t.i}" title="Show the ${fmt(t.o.points)}-point sailings">
+      <td class="pt">${fmt(t.o.points)}<small>${tierLabel(t.o)}</small></td>
+      <td style="width:34%"><span class="num${dip ? " dip" : ""}">${fmt(t.ids.size)}${dip ? " ▼" : ""}</span><div class="bar8" style="width:${(100 * t.ids.size / max).toFixed(1)}%"></div></td>
+      <td><span class="rm">${esc(topRooms(t.rooms))}</span><span class="sub2">Fare for 2 on ${pct(t.f2, t.ids.size)}%${t.fpMax ? ` · $${fmt(t.fpMin)}${t.fpMin !== t.fpMax ? `–$${fmt(t.fpMax)}` : ""} FreePlay` : ""}</span></td></tr>`; }).join("")}
+  </tbody></table>
+  <p class="note">Tap a tier to see its sailings. GTY = guaranteed: Royal assigns the cabin within that category.</p>`;
+
+  // Dips: tiers with fewer sailings than the tier below
+  const dips = T.map((t, k) => ({t, p: T[k-1]})).filter(x => x.p && x.t.ids.size < x.p.ids.size);
+  h += `<h3>Why some tiers have fewer sailings</h3>`;
+  if (!dips.length) h += `<p>In this offer, every tier has at least as many sailings as the one below it.</p>`;
+  else h += `<p>Each drop happens where the <b>room on offer gets better</b>. Royal is giving away a more valuable cabin at that tier, and it holds back the sailings where that cabin is hardest to come by — peak season, the newest and biggest ships, and sailings already close to full.</p>` + dips.map(dipHTML).join("");
+
+  h += `<h3>Where each ship class shows up</h3><p>Tiers with the most sailings for each class:</p><ul>${classes.map(clsLine).join("")}</ul>
+  <p class="note">These patterns are worked out from the offer PDFs. Royal Caribbean doesn’t publish why a sailing is or isn’t in a tier, so treat the explanations as educated guesses. Everything here is recalculated automatically whenever new offer PDFs are loaded.</p>`;
+  return h;
+
+  function dipHTML({t, p}) {
+    const dropped = [...p.ids].filter(si => !t.ids.has(si)), kept = [...p.ids].filter(si => t.ids.has(si));
+    const gained = [...t.ids].filter(si => !p.ids.has(si)).length;
+    const nD = dropped.length, base = p.ids.size;
+    const share = (ids, f, v) => ids.filter(si => f(S[si]) === v).length;
+    // Attributes over-represented among dropped sailings vs. the lower tier as a whole
+    // lift = this group's drop rate ÷ the overall drop rate between these two tiers
+    const skew = (f, label, minLift = 1.6) => {
+      const vals = new Map(); dropped.forEach(si => { const v = f(S[si]); vals.set(v, (vals.get(v)||0) + 1); });
+      return [...vals].map(([v, n]) => { const tot = share([...p.ids], f, v); return {v, n, tot, lift: (n / tot) / (nD / base)}; })
+        .filter(x => x.n >= Math.max(5, nD * 0.03) && x.lift >= minLift).sort((a,b) => b.n * b.lift - a.n * a.lift).map(x => ({...x, label: label(x.v)}));
+    };
+    const ofN = x => `${fmt(x.n)} of ${fmt(x.tot)}`;
+    const items = [];
+    // Season: months that are over-represented, shown as a range when contiguous
+    const months = skew(s => s.d.slice(0, 7), monLabel, 1.25).sort((a,b) => a.v.localeCompare(b.v));
+    if (months.length) {
+      const n = months.reduce((a, x) => a + x.n, 0), idx = months.map(x => +x.v.slice(0,4) * 12 + +x.v.slice(5));
+      const contiguous = idx.every((v, k) => !k || v - idx[k-1] === 1);
+      const first = months[0].v, last = months.at(-1).v;
+      const when = contiguous && months.length > 1
+        ? (first.slice(0,4) === last.slice(0,4) ? `${MON[+first.slice(5)-1]}–${monLabel(last)}` : `${monLabel(first)}–${monLabel(last)}`)
+        : months.map(x => x.label).join(", ");
+      if (n >= nD * 0.25) items.push(`<b>${when}</b> sailings: ${fmt(n)} of the ${fmt(nD)}`);
+    }
+    const cls = skew(s => s.ship.cls, v => v + " class").slice(0, 2);
+    cls.forEach(x => items.push(`<b>${x.label}</b> ships: ${ofN(x)} drop out`));
+    const ships = skew(s => short(s.ship.name), v => v).filter(x => !cls.some(c => D.ships.find(sh => short(sh.name) === x.v).cls === c.v)).slice(0, 3);
+    if (ships.length) items.push(`Ships: ${ships.map(x => `<b>${esc(x.v)}</b> (${ofN(x)})`).join(", ")}`);
+    const regs = skew(s => D.portRegion[s.p], v => v).slice(0, 3);
+    if (regs.length) items.push(`Departing from ${regs.map(x => `<b>${esc(x.v)}</b> (${ofN(x)})`).join(", ")}`);
+    // Room mismatch: did the lower tier offer a specific room on exactly the sailings that vanish?
+    const rD = new Map(); dropped.forEach(si => { const r = p.roomOf(si); rD.set(r, (rD.get(r)||0) + 1); });
+    const [topR, topN] = [...rD].sort((a,b) => b[1]-a[1])[0] || [];
+    const keptTop = kept.filter(si => p.roomOf(si) === topR).length;
+    const roomNote = topN >= nD * 0.8 && keptTop < kept.length * 0.6
+      ? `<p>${topN === nD ? "Every" : "Almost every"} sailing that drops out is one where the ${fmt(p.o.points)} tier was offering <b>${esc(topR)}</b> rather than ${esc(topRooms(new Map([...t.rooms]), 1))} — so these are the sailings where Royal won’t give the better room away.</p>` : "";
+    const f2Note = pct(t.f2, t.ids.size) === 100 && pct(p.f2, base) < 100 ? `, and every offer now covers the fare for 2 guests (only ${pct(p.f2, base)}% did at ${kpts(p.o.points)})` : "";
+    return `<div class="dip-card"><b class="h">${fmt(p.o.points)} → ${fmt(t.o.points)} points: ${fmt(base)} → ${fmt(t.ids.size)} sailings</b>
+      <p>The room steps up from <b>${esc(topRooms(p.rooms))}</b> to <b>${esc(topRooms(t.rooms))}</b>${f2Note}. ${fmt(nD)} sailings offered at ${fmt(p.o.points)} aren’t offered at ${fmt(t.o.points)}${gained ? `, and ${fmt(gained)} new ones appear` : ", and none are added"}.</p>
+      ${roomNote}${items.length ? `<p>Overall ${pct(nD, base)}% of sailings drop out here, but much more of these:</p><ul>${items.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}</div>`;
+  }
 }
 
 function footer() {
