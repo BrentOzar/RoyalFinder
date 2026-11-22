@@ -100,7 +100,9 @@ footer td{padding:1px 10px 1px 0}
 @media (min-width:900px){
   #openFilters{display:none}
   .wrap{grid-template-columns:300px 1fr;align-items:start}
-  #panel,#panel.open{display:flex;position:sticky;top:66px;inset:auto;max-height:calc(100vh - 80px);flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;z-index:1}
+  /* Sidebar flows with the page (no inner scroll box) so every filter is reachable by scrolling the page. */
+  #panel,#panel.open{display:flex;position:static;inset:auto;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;z-index:1}
+  .pbody{overflow:visible;flex:none}
   .phead{border-radius:14px 14px 0 0;padding-top:14px}
   #closeFilters,.pfoot{display:none}
 }
