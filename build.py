@@ -2,8 +2,15 @@
 """Extract Club Royale offer PDFs into cruises.json for index.html.
 
 Usage: python3 build.py [sources_dir]
-Needs `pdftotext` (poppler). Reads the index PDF (e.g. 2611C.pdf) for the
-points per offer code, then every <code>.pdf it lists.
+Needs `pdftotext` (poppler).
+
+The certificate you're offered depends on the cruise you're on (month and
+length), so sources/ can hold several offer sets. Each set is an index PDF
+named like 2611C.pdf (YYMM + letters) plus the tier PDFs it lists
+(2611C01.pdf, 2611CVIP1.pdf, ...). The month comes from the code; the cruise
+length each set applies to comes from sources/sets.json, e.g.
+  {"2611C": {"nights": "6+"}, "2611A": {"nights": "1-5"}}
+A set missing from sets.json gets nights = null (shown as "any length").
 """
 import glob, json, os, re, subprocess, sys, datetime
 
@@ -68,22 +75,58 @@ def mark_one_way(sailings):
             s["e"] = -1
 
 
+NIGHTS = {None, "1-5", "6+"}
+
+
 def main():
-    index = [p for p in glob.glob(os.path.join(SRC, "*.pdf"))
-             if re.fullmatch(r"\d{4}C", os.path.basename(p)[:-4])]
-    if len(index) != 1:
-        sys.exit(f"Expected one index PDF like 2611C.pdf in {SRC}, found {index}")
-    idx = text(index[0])
-    codes = re.findall(r"\b(\d{4}C\w+)\b", idx)
-    pts = [int(p.replace(",", "")) for p in re.findall(r"([\d,]+) Points", idx)]
-    if not codes or len(codes) != len(pts):
-        sys.exit(f"Index PDF: {len(codes)} codes vs {len(pts)} point values")
-    points = dict(zip(codes, pts))
+    set_codes = sorted(os.path.basename(p)[:-4] for p in glob.glob(os.path.join(SRC, "*.pdf"))
+                       if re.fullmatch(r"\d{4}[A-Z]+", os.path.basename(p)[:-4]))
+    if not set_codes:
+        sys.exit(f"No index PDFs like 2611C.pdf in {SRC}")
+    cfg_path = os.path.join(SRC, "sets.json")
+    cfg = json.load(open(cfg_path)) if os.path.exists(cfg_path) else {}
 
     ships, ports, rooms = [], [], []
     def ix(lst, v):
         if v not in lst: lst.append(v)
         return lst.index(v)
+
+    sets = []
+    for sc in set_codes:
+        nights = cfg.get(sc, {}).get("nights")
+        if nights not in NIGHTS:
+            sys.exit(f"sets.json: {sc} nights must be one of {NIGHTS}, got {nights!r}")
+        if nights is None:
+            print(f"WARNING: {sc} has no nights in sets.json; shown as any cruise length", file=sys.stderr)
+        print(f"== {sc}", file=sys.stderr)
+        offers, sailings = build_set(sc, ships, ports, rooms, ix)
+        sets.append({"code": sc, "source": sc + ".pdf", "month": f"20{sc[:2]}-{sc[2:4]}", "nights": nights,
+                     "offers": offers,
+                     "sailings": sorted(sailings.values(), key=lambda s: (s["d"], ships[s["s"]]))})
+
+    missing = [s for s in ships if s.split(" Of ")[0] not in CLASS_OF]
+    if missing:
+        sys.exit(f"Unknown ship class for: {missing} - add to SHIP_CLASS")
+
+    out = {
+        "generated": datetime.date.today().isoformat(),
+        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]]} for s in ships],
+        "ports": ports,
+        "rooms": [{"name": r, "cat": room_category(r), "gty": r.endswith("GTY")} for r in rooms],
+        "sets": sorted(sets, key=lambda x: (x["month"], x["nights"] or "", x["code"])),
+    }
+    with open(OUT, "w") as fh:
+        json.dump(out, fh, separators=(",", ":"))
+    print(f"{len(sets)} offer set(s) -> {OUT}", file=sys.stderr)
+
+
+def build_set(sc, ships, ports, rooms, ix):
+    idx = text(os.path.join(SRC, sc + ".pdf"))
+    codes = re.findall(rf"\b({re.escape(sc)}\w+)\b", idx)
+    pts = [int(p.replace(",", "")) for p in re.findall(r"([\d,]+) Points", idx)]
+    if not codes or len(codes) != len(pts):
+        sys.exit(f"{sc}.pdf: {len(codes)} codes vs {len(pts)} point values")
+    points = dict(zip(codes, pts))
 
     sailings = {}
     offers = []
@@ -93,7 +136,7 @@ def main():
             sys.exit(f"Missing {path}")
         t = text(path)
         fees = re.search(r"JUST PAY BETWEEN (\$[\d.,]+) AND (\$[\d.,]+)", t)
-        offers.append({"code": code, "points": points[code],
+        offers.append({"code": code, "tier": code[len(sc):], "points": points[code],
                        "fees": [fees.group(1), fees.group(2)] if fees else None})
         oi = len(offers) - 1
         n = 0
@@ -121,29 +164,13 @@ def main():
         offers[oi]["rows"] = n
         print(f"{code:>12} {points[code]:>7,} pts  {n:>5} rows", file=sys.stderr)
 
-    missing = [s for s in ships if s.split(" Of ")[0] not in CLASS_OF]
-    if missing:
-        sys.exit(f"Unknown ship class for: {missing} - add to SHIP_CLASS")
-
     mark_one_way(sailings)
-
-    out = {
-        "generated": datetime.date.today().isoformat(),
-        "source": os.path.basename(index[0]),
-        "offers": offers,
-        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]]} for s in ships],
-        "ports": ports,
-        "rooms": [{"name": r, "cat": room_category(r), "gty": r.endswith("GTY")} for r in rooms],
-        "sailings": sorted(sailings.values(), key=lambda s: (s["d"], ships[s["s"]])),
-    }
-    for s in out["sailings"]:
+    for s in sailings.values():
         s["o"].sort(key=lambda o: -offers[o[0]]["points"])
-    with open(OUT, "w") as fh:
-        json.dump(out, fh, separators=(",", ":"))
-    ow = [s for s in out["sailings"] if "e" in s]
-    print(f"{len(ow)} one-way ({sum(1 for s in ow if s['e'] < 0)} with unknown end port)", file=sys.stderr)
-    print(f"{len(out['sailings'])} sailings, {sum(len(s['o']) for s in out['sailings'])} offers -> {OUT}",
+    ow = [s for s in sailings.values() if "e" in s]
+    print(f"{len(sailings)} sailings, {len(ow)} one-way ({sum(1 for s in ow if s['e'] < 0)} with unknown end port)",
           file=sys.stderr)
+    return offers, sailings
 
 
 if __name__ == "__main__":
