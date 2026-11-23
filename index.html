@@ -236,7 +236,7 @@ const st = { tiers:new Set(), cls:new Set(), ships:new Set(), ports:new Set(), r
 
 const region = p => p.split(", ").pop();
 const short = n => n.replace(/ Of The Seas$/, "");
-const fmt = n => n.toLocaleString("en-US");
+const fmt = n => (n || 0).toLocaleString("en-US");
 const kpts = p => p >= 1000 ? (p % 1000 ? (p/1000).toFixed(1) : p/1000) + "K" : String(p);
 const tierLabel = o => o.tier;
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -360,10 +360,11 @@ function buildPanel() {
   const tierN = count(s => [...new Set(s.o.map(o => o[0]))]);
   const clsN = count(s => [s.ship.cls]), shipN = count(s => [s.s]), portN = count(s => [s.p]);
   const catN = count(s => [...new Set(s.o.map(o => D.roomCat[o[1]]))]);
-  const classes = ["Icon","Oasis","Quantum","Freedom","Voyager","Radiance","Vision"].filter(c => clsN.has(c));
-  const ships = D.ships.map((sh, i) => ({sh, i})).filter(x => !st.cls.size || st.cls.has(x.sh.cls))
+  // Ships/ports are shared across offer sets: list only those in this set, plus anything already selected.
+  const classes = ["Icon","Oasis","Quantum","Freedom","Voyager","Radiance","Vision"].filter(c => clsN.has(c) || st.cls.has(c));
+  const ships = D.ships.map((sh, i) => ({sh, i})).filter(x => (shipN.has(x.i) || st.ships.has(x.i)) && (!st.cls.size || st.cls.has(x.sh.cls)))
     .sort((a,b) => classes.indexOf(a.sh.cls) - classes.indexOf(b.sh.cls) || a.sh.name.localeCompare(b.sh.name));
-  const ports = D.ports.map((p, i) => ({p, i}));
+  const ports = D.ports.map((p, i) => ({p, i})).filter(x => portN.has(x.i) || st.ports.has(x.i) || st.regions.has(D.portRegion[x.i]));
   const nOpts = (sel) => `<option value="">Any</option>` + D.nightList.map(n => `<option ${String(n)===sel?"selected":""}>${n}</option>`).join("");
 
   $("#pbody").innerHTML =
