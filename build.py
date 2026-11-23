@@ -30,6 +30,21 @@ SHIP_CLASS = {
 }
 CLASS_OF = {s: c for c, ships in SHIP_CLASS.items() for s in ships}
 
+# (year entered service, approx. guests at double occupancy, rounded to the nearest 100).
+# Capacity varies by source (double vs. maximum occupancy, stretches/refits), so treat as approximate.
+SHIP_INFO = {
+    "Icon": (2024, 5600), "Star": (2025, 5600), "Legend": (2026, 5600),
+    "Utopia": (2024, 5700), "Wonder": (2022, 5700), "Symphony": (2018, 5500),
+    "Harmony": (2016, 5500), "Allure": (2010, 5500), "Oasis": (2009, 5500),
+    "Odyssey": (2021, 4200), "Spectrum": (2019, 4200), "Ovation": (2016, 4200),
+    "Anthem": (2015, 4200), "Quantum": (2014, 4200),
+    "Freedom": (2006, 3600), "Liberty": (2007, 3600), "Independence": (2008, 3600),
+    "Voyager": (1999, 3100), "Explorer": (2000, 3100), "Adventure": (2001, 3100),
+    "Navigator": (2002, 3300), "Mariner": (2003, 3100),
+    "Radiance": (2001, 2500), "Brilliance": (2002, 2500), "Serenade": (2003, 2500), "Jewel": (2004, 2500),
+    "Vision": (1998, 2000), "Enchantment": (1997, 2300), "Grandeur": (1996, 2000), "Rhapsody": (1997, 2000),
+}
+
 # Royal's own ship codes, as used in its cruise-search links:
 #   https://www.royalcaribbean.com/cruises?search=ship:VY|startDate:2026-12-13~2026-12-13
 # Each was checked by loading ?search=ship:<code> and confirming the page title names the ship.
@@ -131,13 +146,17 @@ def main():
     missing = [s for s in ships if s.split(" Of ")[0] not in CLASS_OF]
     if missing:
         sys.exit(f"Unknown ship class for: {missing} - add to SHIP_CLASS")
+    missing = [s for s in ships if s.split(" Of ")[0] not in SHIP_INFO]
+    if missing:
+        sys.exit(f"Unknown year/capacity for: {missing} - add to SHIP_INFO")
     missing = [s for s in ships if s.split(" Of ")[0] not in SHIP_CODE]
     if missing:
         sys.exit(f"Unknown Royal ship code for: {missing} - add to SHIP_CODE (verify at royalcaribbean.com/cruises?search=ship:<code>)")
 
     out = {
         "generated": datetime.date.today().isoformat(),
-        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]], "code": SHIP_CODE[s.split(" Of ")[0]]} for s in ships],
+        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]], "code": SHIP_CODE[s.split(" Of ")[0]],
+                  "year": SHIP_INFO[s.split(" Of ")[0]][0], "guests": SHIP_INFO[s.split(" Of ")[0]][1]} for s in ships],
         "ports": ports,
         "rooms": [{"name": r, "cat": room_category(r), "gty": r.endswith("GTY")} for r in rooms],
         "sets": sorted(sets, key=lambda x: (x["month"], x["nights"] or "", x["code"])),
