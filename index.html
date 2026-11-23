@@ -101,6 +101,7 @@ fieldset[data-g=tiers] .chip[aria-pressed=true] small{color:var(--chip-on-ink)}
 .itin{margin-top:4px;font-weight:600}
 .port{font-size:14px;color:var(--muted);margin-top:2px}
 .ow{color:var(--link);font-weight:800}
+.royal{display:inline-block;margin-top:8px;font-size:14px;font-weight:800;color:var(--link);text-decoration:underline;text-underline-offset:3px;min-height:24px}
 .offers{padding:2px 18px 6px}
 .offer{display:grid;grid-template-columns:auto 1fr auto;gap:2px 14px;padding:10px 0;align-items:center}
 .offer+.offer{border-top:1px dashed var(--line)}
@@ -245,6 +246,8 @@ const nightsName = n => n === "1-5" ? "1–5 nights" : n === "6+" ? "6+ nights" 
 const setDesc = x => `${monthName(x.month)} sailings, ${x.nights ? nightsName(x.nights) : "any cruise length"}`;
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const todayISO = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
+// Royal's cruise search, filtered to this ship and sail date: lands on that one sailing, with its ports and prices.
+const royalURL = s => `https://www.royalcaribbean.com/cruises?search=${encodeURIComponent(`ship:${s.ship.code}|startDate:${s.d}~${s.d}`)}`;
 const dateLabel = iso => { const [y,m,d] = iso.split("-").map(Number);
   return new Date(y, m-1, d).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric", year:"numeric"}); };
 
@@ -486,7 +489,8 @@ function card({s, offers}) {
   return `<article class="card"><div class="ctop">
     <div class="l1"><div><span class="ship">${esc(short(s.ship.name))}</span><span class="cls">${s.ship.cls} class</span></div><span class="date">${dateLabel(s.d)}</span></div>
     <div class="itin">${esc(s.i)}</div>
-    <div class="port">${s.n} nights from ${esc(s.port)}${s.ow ? ` <span class="ow">→ ${s.end ? esc(s.end) : "one-way"}</span>` : ""}</div></div>
+    <div class="port">${s.n} nights from ${esc(s.port)}${s.ow ? ` <span class="ow">→ ${s.end ? esc(s.end) : "one-way"}</span>` : ""}</div>
+    <a class="royal" href="${royalURL(s)}" target="_blank" rel="noopener">See ports &amp; details on Royal’s site <span aria-hidden="true">↗</span></a></div>
     <div class="offers">${offers.map(o => { const t = D.offers[o[0]], r = D.rooms[o[1]];
       return `<div class="offer"><div class="pts">${fmt(t.points)}<small>${tierLabel(t)} pts</small></div>
         <div><div class="room">${esc(r.name)}</div><div class="perks">${o[3] ? `<span class="fp">$${fmt(o[3])} FreePlay</span> · ` : ""}$${o[4]} OBC</div></div>

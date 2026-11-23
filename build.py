@@ -30,6 +30,18 @@ SHIP_CLASS = {
 }
 CLASS_OF = {s: c for c, ships in SHIP_CLASS.items() for s in ships}
 
+# Royal's own ship codes, as used in its cruise-search links:
+#   https://www.royalcaribbean.com/cruises?search=ship:VY|startDate:2026-12-13~2026-12-13
+# Each was checked by loading ?search=ship:<code> and confirming the page title names the ship.
+SHIP_CODE = {
+    "Adventure": "AD", "Allure": "AL", "Anthem": "AN", "Brilliance": "BR", "Enchantment": "EN",
+    "Explorer": "EX", "Freedom": "FR", "Grandeur": "GR", "Harmony": "HM", "Icon": "IC",
+    "Independence": "ID", "Jewel": "JW", "Legend": "LE", "Liberty": "LB", "Mariner": "MA",
+    "Navigator": "NV", "Oasis": "OA", "Odyssey": "OY", "Ovation": "OV", "Quantum": "QN",
+    "Radiance": "RD", "Rhapsody": "RH", "Serenade": "SR", "Spectrum": "SC", "Star": "ST",
+    "Symphony": "SY", "Utopia": "UT", "Vision": "VI", "Voyager": "VY", "Wonder": "WN",
+}
+
 
 def text(path):
     return subprocess.run(["pdftotext", "-layout", path, "-"], check=True,
@@ -119,10 +131,13 @@ def main():
     missing = [s for s in ships if s.split(" Of ")[0] not in CLASS_OF]
     if missing:
         sys.exit(f"Unknown ship class for: {missing} - add to SHIP_CLASS")
+    missing = [s for s in ships if s.split(" Of ")[0] not in SHIP_CODE]
+    if missing:
+        sys.exit(f"Unknown Royal ship code for: {missing} - add to SHIP_CODE (verify at royalcaribbean.com/cruises?search=ship:<code>)")
 
     out = {
         "generated": datetime.date.today().isoformat(),
-        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]]} for s in ships],
+        "ships": [{"name": s, "cls": CLASS_OF[s.split(" Of ")[0]], "code": SHIP_CODE[s.split(" Of ")[0]]} for s in ships],
         "ports": ports,
         "rooms": [{"name": r, "cat": room_category(r), "gty": r.endswith("GTY")} for r in rooms],
         "sets": sorted(sets, key=lambda x: (x["month"], x["nights"] or "", x["code"])),
