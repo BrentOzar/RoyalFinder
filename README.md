@@ -1,4 +1,4 @@
-# Club Royale Cruise Finder
+# Cruise Finder for Club Royale
 
 Static, mobile-first filter page for Royal Caribbean Club Royale casino offer PDFs.
 
@@ -26,3 +26,7 @@ A set missing from `sets.json` is treated as "any length" and the build prints a
 New ship? `build.py` fails loudly; add it to `SHIP_CLASS`.
 
 Filters persist in the URL, so filtered views are shareable links.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
