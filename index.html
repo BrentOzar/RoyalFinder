@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Club Royale Cruise Finder</title>
+<title>Cruise Finder for Club Royale</title>
 <meta name="theme-color" content="#0c2d57">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,13 +35,9 @@ button{cursor:pointer}
 header{position:sticky;top:0;z-index:20;background:var(--brand);color:#fff;padding:10px 16px 0;padding-top:max(10px,env(safe-area-inset-top))}
 .hrow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;max-width:1200px;margin:0 auto}
 .logo{flex:none}
-h1{font:700 22px/1.1 var(--serif);margin:0}
+h1{font:700 22px/1.1 var(--serif);margin:0;flex:1 1 220px;min-width:0}
 h1 small{display:block;font:700 12.5px/1.3 Nunito,system-ui,sans-serif;color:#ffd978;margin-top:3px}
-.search{order:3;flex:1 1 100%}
 #openFilters{margin-left:auto}
-@media (min-width:600px){.search{order:0;flex:1 1 0;max-width:460px;margin-left:auto}#openFilters{margin-left:0}}
-.search input{width:100%;border:0;border-radius:999px;padding:11px 18px;background:#fffdf7;color:#10243d;font-size:16px;min-height:44px}
-.search input::placeholder{color:#5d6b7c}
 #openFilters{border:0;border-radius:999px;background:var(--gold);color:#0c2d57;padding:10px 18px;min-height:44px;font-weight:800;white-space:nowrap}
 #openFilters .badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:#0c2d57;color:#ffd978;font-size:12px;line-height:20px;text-align:center}
 #openFilters .badge:empty{display:none}
@@ -76,10 +72,10 @@ legend button[hidden]{display:none}
 .chip[aria-pressed=true]{background:var(--sea);border-color:var(--sea);color:#fff}
 .chip[aria-pressed=true] small{color:rgba(255,255,255,.85)}
 @media (prefers-color-scheme:dark){.chip[aria-pressed=true]{color:#06202e}.chip[aria-pressed=true] small{color:rgba(6,32,46,.75)}}
-fieldset[data-g=tiers] .chip{border:2px dashed #c9a24a;background:var(--gold-soft);color:var(--gold-ink)}
-fieldset[data-g=tiers] .chip small{color:var(--gold-ink);opacity:.75}
-fieldset[data-g=tiers] .chip[aria-pressed=true]{background:var(--chip-on);border-color:var(--gold);color:var(--chip-on-ink)}
-fieldset[data-g=tiers] .chip[aria-pressed=true] small{color:var(--chip-on-ink)}
+.setrow.tiers .chip{border:2px dashed #c9a24a;background:var(--gold-soft);color:var(--gold-ink)}
+.setrow.tiers .chip small{color:var(--gold-ink);opacity:.75}
+.setrow.tiers .chip[aria-pressed=true]{background:var(--chip-on);border-color:var(--gold);color:var(--chip-on-ink)}
+.setrow.tiers .chip[aria-pressed=true] small{color:var(--chip-on-ink)}
 .rgrp{clear:both;padding:6px 0 8px}
 .rgrp+.rgrp{border-top:1px dashed var(--line)}
 .rgrp .chip.reg{font-weight:800}
@@ -142,7 +138,10 @@ footer td{padding:1px 12px 1px 0}
 .setbox h2{font:700 19px/1.2 var(--serif);margin:0 0 2px}
 .setbox .why{font-size:13.5px;color:var(--muted);margin:0 0 10px}
 .setrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:8px}
-.setrow > span{font-weight:800;font-size:14px;min-width:84px}
+.setrow > span{flex:0 0 100%;font-weight:800;font-size:14.5px}
+.setrow > span em{font-weight:600;font-style:normal;color:var(--muted)}
+.setrow.tiers{flex:1 1 100%}
+.qbox input{width:100%;border:1px solid var(--chip-line);background:var(--card);border-radius:999px;padding:10px 16px;min-height:44px;font-size:16px}
 .setrow .chip[disabled]{opacity:.45;cursor:not-allowed}
 .setnow{margin:10px 0 0;font-size:14px}
 .setnow b{color:var(--link)}
@@ -159,6 +158,7 @@ body.noset .setbox{border-width:3px}
 .mbody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 18px 28px;padding-bottom:max(28px,env(safe-area-inset-bottom))}
 .mbody h3{font:700 19px var(--serif);margin:22px 0 8px}
 .mbody p{margin:8px 0}
+.mbody a{color:var(--link);font-weight:800}
 .mbody .lead{font-size:16.5px}
 .tt{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
 .tt th{text-align:left;font-size:12px;color:var(--muted);font-weight:800;padding:6px 6px;border-bottom:2px solid var(--line)}
@@ -187,8 +187,7 @@ body.noset .setbox{border-width:3px}
 <header>
   <div class="hrow">
     <svg class="logo" width="42" height="42" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#f2b632"/><circle cx="22" cy="22" r="16" fill="none" stroke="#0c2d57" stroke-width="2" stroke-dasharray="5 4"/><path d="M22 11v17M15 22a7 7 0 0 0 14 0M18 14h8" stroke="#0c2d57" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
-    <h1>Club Royale Cruise Finder<small><span id="sub">Free cruise offers</span> · <button type="button" class="linkbtn" id="openAnalysis">Tier analysis</button></small></h1>
-    <div class="search"><input id="q" type="search" placeholder="Search: Alaska, Perfect Day…" enterkeyhint="search" autocomplete="off"></div>
+    <h1>Cruise Finder for Club Royale<small><span id="sub">Free cruise offers</span> · <button type="button" class="linkbtn" id="openAnalysis">Tier analysis</button> · <button type="button" class="linkbtn" id="openAbout">About</button></small></h1>
     <button id="openFilters" type="button">Filters<span class="badge" id="badge"></span></button>
   </div>
   <svg class="waves" viewBox="0 0 1200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20V10C50 10 50 1 100 1S150 10 200 10 250 1 300 1 350 10 400 10 450 1 500 1 550 10 600 10 650 1 700 1 750 10 800 10 850 1 900 1 950 10 1000 10 1050 1 1100 1 1150 10 1200 10V20Z" fill="currentColor"/></svg>
@@ -219,6 +218,18 @@ body.noset .setbox{border-width:3px}
     <button class="more" id="more" hidden>Show more</button>
     <footer id="foot"></footer>
   </main>
+</div>
+
+<div class="modal" id="about" hidden role="dialog" aria-modal="true" aria-labelledby="abTitle">
+  <div class="mbox">
+    <div class="phead"><h2 id="abTitle">About</h2><button type="button" id="closeAbout">Close</button></div>
+    <div class="mbody">
+      <p class="lead">Made with love by <a href="https://www.brentozar.com" target="_blank" rel="noopener">Brent Ozar</a>.</p>
+      <p>I have no affiliation with Royal Caribbean or Club Royale, and no financial gain from this site at all. It’s just a nicer way to read the monthly offer PDFs.</p>
+      <p>It’s free and open source (MIT license): <a href="https://github.com/BrentOzar/RoyalFinder" target="_blank" rel="noopener">github.com/BrentOzar/RoyalFinder</a>.</p>
+      <p>Questions, compliments or dreams? Email <a href="mailto:brento@brentozar.com">brento@brentozar.com</a>.</p>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="analysis" hidden role="dialog" aria-modal="true" aria-labelledby="anTitle">
@@ -268,6 +279,9 @@ function init(data) {
   }));
   bind();
   $("#openAnalysis").onclick = openAnalysis;
+  $("#openAbout").onclick = openAbout;
+  $("#closeAbout").onclick = closeAbout;
+  $("#about").addEventListener("click", e => { if (e.target.id === "about") closeAbout(); });
   $("#closeAnalysis").onclick = closeAnalysis;
   $("#analysis").addEventListener("click", e => {
     if (e.target.id === "analysis") return closeAnalysis();
@@ -275,7 +289,7 @@ function init(data) {
     ["tiers","cls","ships","ports","regions","route","cats","guests"].forEach(k => st[k].clear());
     st.tiers.add(Number(tr.dataset.tier)); closeAnalysis(); changed(true); window.scrollTo(0, 0);
   });
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#analysis").hidden) closeAnalysis(); });
+  document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("#analysis").hidden) closeAnalysis(); if (!$("#about").hidden) closeAbout(); });
   $("#setbox").addEventListener("click", onSetClick);
   const code = initialSet();
   if (code) activate(code, true);
@@ -319,13 +333,18 @@ function buildBanner() {
   if (cur) status = `Showing offer <b>${esc(cur.code)}</b>: the certificates you can earn on ${esc(setDesc(cur))}.`;
   else if (pick.month && !setsFor(pick.month, pick.nights).length) status = `No offer loaded yet for ${esc(monthName(pick.month))}${pick.nights ? ", " + nightsName(pick.nights) : ""}.`;
   else status = `Pick ${pick.month ? "your cruise length" : "the month you’re sailing"} to see your offers.`;
+  const tiers = cur ? [...cur.offers.keys()].reverse().map(i => `<button type="button" class="chip" data-tier="${i}" aria-pressed="${st.tiers.has(i)}">${fmt(cur.offers[i].points)}</button>`).join("")
+    : `<p class="hint" style="margin:0">Pick your sailing month and cruise length first.</p>`;
   $("#setbox").innerHTML = `<div class="intro"><h2>Which cruise are you on?</h2>
     <p class="why">Club Royale certificates depend on the cruise you earn them on: the month you sail and how many nights it is.</p></div>
-    <div class="setrow"><span>Sailing in</span>${months.map(m => chip("month", m, monthName(m), pick.month === m)).join("")}</div>
-    ${anyNights ? `<div class="setrow"><span>Cruise length</span>${["1-5","6+"].map(n => chip("nights", n, nightsName(n), pick.nights === n, pick.month && !setsFor(pick.month, n).length)).join("")}</div>` : ""}
+    <div class="setrow"><span>I’m sailing in <em>(pick one)</em></span>${months.map(m => chip("month", m, monthName(m), pick.month === m)).join("")}</div>
+    ${anyNights ? `<div class="setrow"><span>My cruise length <em>(pick one)</em></span>${["1-5","6+"].map(n => chip("nights", n, nightsName(n), pick.nights === n, pick.month && !setsFor(pick.month, n).length)).join("")}</div>` : ""}
+    <div class="setrow tiers"><span>If I earn this many points on the one cruise, what will Club Royale offer me? <em>(pick as many as you like)</em></span>${tiers}</div>
     <p class="setnow">${status}</p>`;
 }
 function onSetClick(e) {
+  const t = e.target.closest("[data-tier]");
+  if (t) { const i = Number(t.dataset.tier); st.tiers.has(i) ? st.tiers.delete(i) : st.tiers.add(i); changed(false); return; }
   const c = e.target.closest("[data-set-g]"); if (!c || c.disabled) return;
   pick[c.dataset.setG] = c.dataset.v;
   if (c.dataset.setG === "month" && pick.nights && !setsFor(pick.month, pick.nights).length) pick.nights = "";
@@ -363,7 +382,6 @@ function portGroup(ports, portN) {
 }
 
 function buildPanel() {
-  const tierN = count(s => [...new Set(s.o.map(o => o[0]))]);
   const clsN = count(s => [s.ship.cls]), shipN = count(s => [s.s]), portN = count(s => [s.p]);
   const catN = count(s => [...new Set(s.o.map(o => D.roomCat[o[1]]))]);
   // Ships/ports are shared across offer sets: list only those in this set, plus anything already selected.
@@ -374,8 +392,10 @@ function buildPanel() {
   const nOpts = (sel) => `<option value="">Any</option>` + D.nightList.map(n => `<option ${String(n)===sel?"selected":""}>${n}</option>`).join("");
 
   $("#pbody").innerHTML =
-    chipGroup("tiers", "Points tier", [...D.offers.keys()].reverse().map(i => ({v:i, label:kpts(D.offers[i].points)+" · "+tierLabel(D.offers[i]), n:tierN.get(i)||0})), st.tiers,
-      "Each tier is a separate offer code. Pick yours (or several to compare).") +
+    chipGroup("guests", "Offer", [{v:2, label:"Free fare for 2"}, {v:1, label:"Free fare for 1"}], st.guests,
+      "“For 1”: guest 2 pays a reduced fare; taxes & fees apply to all.") +
+    `<fieldset><legend>Search</legend><div class="qbox"><input id="q" type="search" value="${esc(st.q)}" placeholder="Alaska, Perfect Day, Cozumel…" enterkeyhint="search" autocomplete="off" aria-label="Search cruises"></div>
+      <p class="hint">Matches ship, itinerary and ports.</p></fieldset>` +
     `<fieldset><legend>Sail dates</legend><div class="two">
       <label>From<input type="date" id="from" value="${st.from}"></label>
       <label>To<input type="date" id="to" value="${st.to}"></label></div></fieldset>` +
@@ -389,9 +409,7 @@ function buildPanel() {
     chipGroup("route", "Route", [{v:"rt", label:"Round trip", n:D.sailings.filter(x => !x.ow).length}, {v:"ow", label:"One-way / repositioning", n:D.sailings.filter(x => x.ow).length}], st.route,
       "One-way = ends at a different port than it starts. Inferred from the ship\u2019s next sailing and itinerary names, since the PDFs only list departure ports.") +
     chipGroup("cats", "Stateroom", CATS.filter(c => catN.has(c)).map(c => ({v:c, label:c, n:catN.get(c)})), st.cats,
-      "GTY = guaranteed: Royal picks the room within that category.") +
-    chipGroup("guests", "Offer", [{v:2, label:"Free fare for 2"}, {v:1, label:"Free fare for 1"}], st.guests,
-      "“For 1”: guest 2 pays a reduced fare; taxes & fees apply to all.");
+      "GTY = guaranteed: Royal picks the room within that category.");
   syncPanel();
 }
 
@@ -416,8 +434,8 @@ function bind() {
   $("#pbody").addEventListener("change", e => {
     if (["from","to","nmin","nmax"].includes(e.target.id)) { st[e.target.id] = e.target.value; changed(); }
   });
-  let t; $("#q").addEventListener("input", e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value.trim(); changed(); }, 150); });
-  $("#q").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+  let t; $("#pbody").addEventListener("input", e => { if (e.target.id !== "q") return; clearTimeout(t); const v = e.target.value.trim(); t = setTimeout(() => { st.q = v; changed(); }, 150); });
+  $("#pbody").addEventListener("keydown", e => { if (e.target.id === "q" && e.key === "Enter") e.target.blur(); });
   $("#sort").addEventListener("change", e => { st.sort = e.target.value; changed(); });
   $("#openFilters").onclick = () => { $("#panel").classList.add("open"); document.body.style.overflow = "hidden"; };
   const close = () => { $("#panel").classList.remove("open"); document.body.style.overflow = ""; window.scrollTo(0,0); };
@@ -427,7 +445,7 @@ function bind() {
   $("#active").addEventListener("click", e => {
     const b = e.target.closest(".pill"); if (!b) return;
     if (b.dataset.k === "all") reset();
-    else { const [g, v] = b.dataset.k.split(":"); if (st[g] instanceof Set) st[g].delete(["cls","cats","regions","route"].includes(g) ? v : Number(v)); else st[g] = ""; if (g==="q") $("#q").value=""; if (g==="cls") pruneShips(); }
+    else { const [g, v] = b.dataset.k.split(":"); if (st[g] instanceof Set) st[g].delete(["cls","cats","regions","route"].includes(g) ? v : Number(v)); else st[g] = ""; if (g==="cls") pruneShips(); }
     changed(true);
   });
   if ("IntersectionObserver" in window) new IntersectionObserver(es => { if (es[0].isIntersecting && !$("#more").hidden) { shown += PAGE; render(); } }, {rootMargin:"600px"}).observe($("#more"));
@@ -435,7 +453,7 @@ function bind() {
 }
 
 function pruneShips() { if (st.cls.size) [...st.ships].forEach(i => { if (!st.cls.has(D.ships[i].cls)) st.ships.delete(i); }); }
-function reset() { ["tiers","cls","ships","ports","regions","route","cats","guests"].forEach(k => st[k].clear()); st.from = todayISO(); st.to = st.nmin = st.nmax = st.q = ""; $("#q").value = ""; }
+function reset() { ["tiers","cls","ships","ports","regions","route","cats","guests"].forEach(k => st[k].clear()); st.from = todayISO(); st.to = st.nmin = st.nmax = st.q = ""; }
 
 function changed(rebuild) {
   shown = PAGE;
@@ -447,6 +465,7 @@ function syncPanel() {
     const g = c.dataset.g, v = ["tiers","ships","ports","guests"].includes(g) ? Number(c.dataset.v) : c.dataset.v;
     c.setAttribute("aria-pressed", st[g].has(v) || (g === "ports" && st.regions.has(D.portRegion[v])));
   });
+  document.querySelectorAll("#setbox [data-tier]").forEach(c => c.setAttribute("aria-pressed", st.tiers.has(Number(c.dataset.tier))));
   document.querySelectorAll("#pbody [data-clear]").forEach(b => b.hidden = !(st[b.dataset.clear].size || (b.dataset.clear === "ports" && st.regions.size)));
 }
 
@@ -495,7 +514,7 @@ function card({s, offers}) {
     <div class="port">${s.n} nights from ${esc(s.port)}${s.ow ? ` <span class="ow">→ ${s.end ? esc(s.end) : "one-way"}</span>` : ""}</div>
     <a class="royal" href="${royalURL(s)}" target="_blank" rel="noopener">See ports &amp; details on Royal’s site <span aria-hidden="true">↗</span></a></div>
     <div class="offers">${offers.map(o => { const t = D.offers[o[0]], r = D.rooms[o[1]];
-      return `<div class="offer"><div class="pts">${fmt(t.points)}<small>${tierLabel(t)} pts</small></div>
+      return `<div class="offer"><div class="pts">${fmt(t.points)}<small>pts</small></div>
         <div><div class="room">${esc(r.name)}</div><div class="perks">${o[3] ? `<span class="fp">$${fmt(o[3])} FreePlay</span> · ` : ""}$${o[4]} OBC</div></div>
         <div class="guests">Fare for ${o[2]}</div></div>`; }).join("")}</div></article>`;
 }
@@ -555,7 +574,7 @@ function readURL() {
   list("route").forEach(r => st.route.add(r === "oneway" ? "ow" : "rt"));
   list("room").forEach(c => st.cats.add(c));
   list("guests").forEach(g => st.guests.add(Number(g)));
-  st.q = u.get("q") || ""; $("#q").value = st.q;
+  st.q = u.get("q") || "";
   st.sort = u.get("sort") || "date";
 }
 
@@ -565,6 +584,8 @@ function openAnalysis() {
   if (!anBuilt) { $("#anBody").innerHTML = analysisHTML(); anBuilt = true; }
   $("#analysis").hidden = false; document.body.style.overflow = "hidden"; $("#closeAnalysis").focus();
 }
+function openAbout() { $("#about").hidden = false; document.body.style.overflow = "hidden"; $("#closeAbout").focus(); }
+function closeAbout() { $("#about").hidden = true; document.body.style.overflow = ""; $("#openAbout").focus(); }
 function closeAnalysis() { $("#analysis").hidden = true; document.body.style.overflow = ""; $("#openAnalysis").focus(); }
 
 const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -597,7 +618,7 @@ function analysisHTML() {
   <table class="tt"><thead><tr><th>Tier</th><th>Sailings</th><th>Room offered</th></tr></thead><tbody>
   ${T.map((t, k) => { const prev = T[k-1], dip = prev && t.ids.size < prev.ids.size;
     return `<tr data-tier="${t.i}" title="Show the ${fmt(t.o.points)}-point sailings">
-      <td class="pt">${fmt(t.o.points)}<small>${tierLabel(t.o)}</small></td>
+      <td class="pt">${fmt(t.o.points)}</td>
       <td style="width:34%"><span class="num${dip ? " dip" : ""}">${fmt(t.ids.size)}${dip ? " ▼" : ""}</span><div class="bar8" style="width:${(100 * t.ids.size / max).toFixed(1)}%"></div></td>
       <td><span class="rm">${esc(topRooms(t.rooms))}</span><span class="sub2">Fare for 2 on ${pct(t.f2, t.ids.size)}%${t.fpMax ? ` · $${fmt(t.fpMin)}${t.fpMin !== t.fpMax ? `–$${fmt(t.fpMax)}` : ""} FreePlay` : ""}</span></td></tr>`; }).join("")}
   </tbody></table>
@@ -611,6 +632,8 @@ function analysisHTML() {
 
   h += `<h3>Where each ship class shows up</h3><p>Tiers with the most sailings for each class:</p><ul>${classes.map(clsLine).join("")}</ul>
   <p class="note">These patterns are worked out from the offer PDFs. Royal Caribbean doesn’t publish why a sailing is or isn’t in a tier, so treat the explanations as educated guesses. Everything here is recalculated automatically whenever new offer PDFs are loaded.</p>`;
+  h += `<h3>About this data</h3><p>Source: Club Royale offer ${esc(D.source)}, extracted ${D.generated}. Taxes, fees and port expenses are extra and confirmed at booking; availability isn’t guaranteed — confirm with Club Royale before planning around a sailing.</p>
+  <table class="tt"><thead><tr><th>Offer code</th><th>Points</th><th>Taxes &amp; fees</th></tr></thead><tbody>${D.offers.map(o => `<tr><td>${esc(o.code)}</td><td class="num">${fmt(o.points)}</td><td>${o.fees ? `${esc(o.fees[0])}–${esc(o.fees[1])}` : "—"}</td></tr>`).join("")}</tbody></table>`;
   return h;
 
   function dipHTML({t, p}) {
@@ -658,8 +681,7 @@ function analysisHTML() {
 }
 
 function footer() {
-  $("#foot").innerHTML = `Source: Club Royale offer ${esc(D.source)}, extracted ${D.generated}. Taxes, fees and port expenses are extra and confirmed at booking; availability isn't guaranteed — confirm with Club Royale before planning around a sailing.
-    <table>${D.offers.map(o => `<tr><td>${o.code}</td><td>${fmt(o.points)} pts</td><td>${o.fees ? `taxes &amp; fees ${o.fees[0]}–${o.fees[1]}` : ""}</td></tr>`).join("")}</table>`;
+  $("#foot").textContent = "Taxes, fees and port expenses are extra and confirmed at booking; availability isn't guaranteed. Confirm with Club Royale before planning around a sailing. Data source and offer details are in the Tier analysis.";
 }
 })();
 </script>
